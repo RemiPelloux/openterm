@@ -3,14 +3,14 @@ import SwiftUI
 
 struct AppearanceSettings {
     var font = "JetBrains Mono"
-    var fontSize = 14.0
+    var fontSize = 12.0
     var background = "#070b12"
     var foreground = "#e8eef7"
     var accent = "#5eead4"
     var selection = "#1d4ed8"
     var opacity = 0.94
     var blur = 32.0
-    var padding = 22.0
+    var padding = 28.0
     var titlebar = "tabs"
     var balancedPadding = true
 }

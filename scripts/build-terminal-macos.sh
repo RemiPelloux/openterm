@@ -10,6 +10,7 @@ export PATH
 
 echo "Building Ghostty $GHOSTTY_VERSION terminal base..."
 cd "$ghostty_source"
+patch -p1 -N -r - < "$root/native/macos/patches/ghostty-config-path.patch" || true
 zig build -Doptimize=ReleaseFast -Dtarget="$MACOS_TARGET"
 
 app="$ghostty_source/zig-out/Ghostty.app"

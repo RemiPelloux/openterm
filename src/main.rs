@@ -4,6 +4,7 @@ mod cli;
 mod doctor;
 mod explain;
 mod git_context;
+mod help;
 mod panel_command;
 mod providers;
 mod results;

@@ -50,6 +50,18 @@ fn ai_explain_rejects_last_and_result_together() {
 }
 
 #[test]
+fn ai_help_lists_commands() {
+    let output = openterm_as("ai-help").output().expect("run ai-help");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(stdout.contains("ai-help"));
+    assert!(stdout.contains("ai-ask"));
+    assert!(stdout.contains("ai-rg"));
+    assert!(stdout.contains("Agent & guidance"));
+}
+
+#[test]
 fn launcher_lists_new_rtk_commands() {
     let output = openterm_as("openterm")
         .arg("help")

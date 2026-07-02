@@ -1,0 +1,12 @@
+--- a/macos/Sources/App/macOS/AppDelegate.swift
++++ b/macos/Sources/App/macOS/AppDelegate.swift
+@@ -164,9 +164,7 @@ class AppDelegate: NSObject,
+     override init() {
+-#if DEBUG
+         ghostty = Ghostty.App(configPath: ProcessInfo.processInfo.environment["GHOSTTY_CONFIG_PATH"])
+-#else
+-        ghostty = Ghostty.App()
+-#endif
+         super.init()
+ 
+         ghostty.delegate = self

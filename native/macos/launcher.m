@@ -9,7 +9,7 @@ static BOOL configNeedsUpgrade(NSString *path) {
     if (!text) {
         return YES;
     }
-    return ![text containsString:@"openterm-theme-version = 3"];
+    return ![text containsString:@"openterm-theme-version = 5"];
 }
 
 static void prepareSupport(NSString *resources) {
@@ -64,13 +64,26 @@ static void prepareRuntime(NSString *resources) {
         URLsForDirectory:NSApplicationSupportDirectory
                inDomains:NSUserDomainMask].firstObject.path;
     support = [support stringByAppendingPathComponent:@"OpenTerm"];
-    NSString *config = [support stringByAppendingPathComponent:@"config.ghostty"];
     NSString *runtime = [support stringByAppendingPathComponent:@"runtime.ghostty"];
     NSString *shell = [resources stringByAppendingPathComponent:@"openterm/shell/openterm-shell"];
-    NSString *text = [NSString stringWithFormat:
-                      @"config-file = \"%@\"\ncommand = direct:%@\n", config, shell];
+    NSString *text = [NSString stringWithFormat:@"command = direct:%@\n", shell];
     [text writeToFile:runtime atomically:YES encoding:NSUTF8StringEncoding error:nil];
     setenv("GHOSTTY_CONFIG_PATH", runtime.fileSystemRepresentation, 1);
+}
+
+static void launchTerminal(NSString *terminal, NSString *config, NSString *shell) {
+    const char *engine = terminal.fileSystemRepresentation;
+    /* Ghostty CLI only accepts --key=value (not separate args). */
+    NSString *configFlag = [NSString stringWithFormat:@"--config-file=\"%@\"", config];
+    NSString *commandFlag = [NSString stringWithFormat:@"--command=direct:%@", shell];
+    char *args[] = {
+        (char *)engine,
+        (char *)"--config-default-files=false",
+        (char *)configFlag.UTF8String,
+        (char *)commandFlag.UTF8String,
+        NULL,
+    };
+    execv(engine, args);
 }
 
 int main(int argc, char *argv[]) {
@@ -81,11 +94,19 @@ int main(int argc, char *argv[]) {
         prepareRuntime(resources);
         prependTools(resources);
         startSplash(resources);
+        NSString *support = [NSFileManager.defaultManager
+            URLsForDirectory:NSApplicationSupportDirectory
+                   inDomains:NSUserDomainMask].firstObject.path;
+        support = [support stringByAppendingPathComponent:@"OpenTerm"];
+        NSString *config = [support stringByAppendingPathComponent:@"config.ghostty"];
+        NSString *shell = [resources stringByAppendingPathComponent:
+                           @"openterm/shell/openterm-shell"];
         NSString *terminal = [contents stringByAppendingPathComponent:
                               @"MacOS/openterm-terminal"];
-        execv(terminal.fileSystemRepresentation, argv);
+        launchTerminal(terminal, config, shell);
         NSLog(@"OpenTerm could not start terminal engine: %s", strerror(errno));
         return 127;
     }
     (void)argc;
+    (void)argv;
 }

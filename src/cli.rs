@@ -1,7 +1,8 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-const CORE_COMMANDS: [&str; 19] = [
+const CORE_COMMANDS: [&str; 20] = [
+    "ai-help",
     "ai-ask",
     "ai-explain",
     "ai-panel",
@@ -22,29 +23,6 @@ const CORE_COMMANDS: [&str; 19] = [
     "ai-context",
     "ai-ui",
 ];
-const HELP: &str = "OpenTerm — AI-native terminal foundation
-
-Commands:
-  ai-ask      Ask an LLM for read-only terminal guidance
-  ai-explain  Explain stored command output with your model
-  ai-panel    Open the agent side panel
-  ai-workspace Print cwd + Git context for agents
-  ai-doctor   Check required tools and provider credentials
-  ai-version  Print the OpenTerm version
-  ai-result   Inspect stored result metadata
-  ai-expand   Retrieve exact stored command evidence
-  ai-page     Read a bounded page of stored evidence
-  ai-export   Export stored evidence to a file
-  ai-pin      Protect a result from cleanup
-  ai-forget   Move a result into recoverable trash
-  ai-run      Execute one program and preserve its raw output
-  ai-history  Browse recent managed commands
-  ai-search-history Search command history locally
-  ai-clean-history  Rank safe cleanup suggestions
-  ai-usage    Show local evidence-store statistics
-  ai-context  Show Git branch and repository state
-  ai-ui       Open native appearance settings
-";
 
 pub fn run(program: &OsStr, args: impl IntoIterator<Item = OsString>) -> i32 {
     let command = executable_name(program);
@@ -52,6 +30,7 @@ pub fn run(program: &OsStr, args: impl IntoIterator<Item = OsString>) -> i32 {
         return spec.run(args);
     }
     match command.as_str() {
+        "ai-help" => crate::help::run(args),
         "ai-ask" => crate::ask::run(args),
         "ai-explain" => crate::explain::run(args),
         "ai-panel" => crate::panel_command::run(args),
@@ -87,11 +66,7 @@ fn executable_name(program: &OsStr) -> String {
 }
 
 fn print_help() -> i32 {
-    print!("{HELP}");
-    for command in crate::rtk_commands::all() {
-        println!("  {:<11} {}", command.name, command.description);
-    }
-    println!("\nEvery OpenTerm tool command starts with ai-.");
+    crate::help::print_summary();
     0
 }
 
@@ -111,7 +86,8 @@ fn print_version() -> i32 {
 }
 
 fn print_unknown(command: &str) -> i32 {
-    eprintln!("error: unknown OpenTerm command '{command}'\n\n{HELP}");
+    eprintln!("error: unknown OpenTerm command '{command}'\n");
+    crate::help::print_summary();
     2
 }
 
