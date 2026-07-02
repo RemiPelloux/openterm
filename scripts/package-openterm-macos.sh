@@ -4,31 +4,39 @@ set -eu
 . "$(dirname "$0")/native-common.sh"
 prepare_native_sources
 
-dmg="$downloads/Ghostty-$GHOSTTY_VERSION.dmg"
-mount="$cache/mount"
-base="$cache/base/Ghostty.app"
 app="$root/dist/OpenTerm.app"
 plist="$app/Contents/Info.plist"
 resources="$app/Contents/Resources"
 
-download "$GHOSTTY_DMG_URL" "$dmg"
-verify "$GHOSTTY_DMG_SHA256" "$dmg"
-
-if [ ! -d "$base" ]; then
-  mkdir -p "$(dirname "$base")"
+resolve_terminal_base() {
   if [ -n "${GHOSTTY_APP:-}" ] && [ -d "$GHOSTTY_APP" ]; then
-    ditto "$GHOSTTY_APP" "$base"
-  else
-    rm -rf "$mount"
-    mkdir -p "$mount"
-    hdiutil attach "$dmg" -mountpoint "$mount" -nobrowse -readonly >/dev/null
-    trap 'hdiutil detach "$mount" >/dev/null 2>&1 || true' EXIT HUP INT TERM
-    ditto "$mount/Ghostty.app" "$base"
-    hdiutil detach "$mount" >/dev/null
-    trap - EXIT HUP INT TERM
+    echo "$GHOSTTY_APP"
+    return
   fi
-fi
-codesign --verify --deep --strict "$base"
+  if [ "${OPENTERM_USE_DMG:-0}" = "1" ]; then
+    dmg="$downloads/Ghostty-$GHOSTTY_VERSION.dmg"
+    mount="$cache/mount"
+    base="$cache/base/Ghostty.app"
+    download "$GHOSTTY_DMG_URL" "$dmg"
+    verify "$GHOSTTY_DMG_SHA256" "$dmg"
+    if [ ! -d "$base" ]; then
+      mkdir -p "$(dirname "$base")"
+      rm -rf "$mount"
+      mkdir -p "$mount"
+      hdiutil attach "$dmg" -mountpoint "$mount" -nobrowse -readonly >/dev/null
+      trap 'hdiutil detach "$mount" >/dev/null 2>&1 || true' EXIT HUP INT TERM
+      ditto "$mount/Ghostty.app" "$base"
+      hdiutil detach "$mount" >/dev/null
+      trap - EXIT HUP INT TERM
+    fi
+    echo "$base"
+    return
+  fi
+  "$root/scripts/build-terminal-macos.sh"
+}
+
+base=$(resolve_terminal_base)
+codesign --verify --deep --strict "$base" 2>/dev/null || true
 
 rm -rf "$app"
 mkdir -p "$root/dist"
@@ -78,20 +86,6 @@ cp "$root/LICENSE" "$bundle/licenses/OPENTERM-LICENSE"
 cp "$root/native/licenses/GHOSTTY-LICENSE" "$bundle/licenses/"
 cp "$root/THIRD_PARTY_NOTICES.md" "$bundle/licenses/"
 
-menu_source="$ghostty_source/macos/Sources/App/macOS/MainMenu.xib"
-menu_patched="$cache/OpenTerm-MainMenu.xib"
-sed \
-  -e 's/title="Ghostty"/title="OpenTerm"/g' \
-  -e 's/About Ghostty/About OpenTerm/g' \
-  -e 's/Make Ghostty the Default Terminal/Make OpenTerm the Default Terminal/g' \
-  -e 's/Hide Ghostty/Hide OpenTerm/g' \
-  -e 's/Quit Ghostty/Quit OpenTerm/g' \
-  -e 's/Ghostty Help/OpenTerm Help/g' \
-  -e 's/title="Check for Updates\.\.\."/title="Updates managed by OpenTerm" enabled="NO"/g' \
-  "$menu_source" > "$menu_patched"
-rm -rf "$resources/MainMenu.nib"
-ibtool --compile "$resources/MainMenu.nib" "$menu_patched"
-
 icon_png="$cache/OpenTerm-1024.png"
 iconset="$cache/OpenTerm.iconset"
 rm -rf "$iconset"
@@ -122,9 +116,37 @@ iconutil -c icns "$iconset" -o "$resources/OpenTerm.icns"
 /usr/libexec/PlistBuddy -c 'Delete :CFBundleIconName' "$plist" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c 'Delete :NSDockTilePlugIn' "$plist" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c 'Delete :SUPublicEDKey' "$plist" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c 'Add :SUEnableAutomaticChecks bool false' "$plist"
-/usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$plist"
-/usr/libexec/PlistBuddy -c "Add :OpenTermTerminalBaseVersion string $GHOSTTY_VERSION" "$plist"
+/usr/libexec/PlistBuddy -c 'Add :SUEnableAutomaticChecks bool false' "$plist" 2>/dev/null || \
+  /usr/libexec/PlistBuddy -c 'Set :SUEnableAutomaticChecks false' "$plist"
+/usr/libexec/PlistBuddy -c 'Add :SUAutomaticallyUpdate bool false' "$plist" 2>/dev/null || \
+  /usr/libexec/PlistBuddy -c 'Set :SUAutomaticallyUpdate false' "$plist"
+/usr/libexec/PlistBuddy -c "Add :OpenTermTerminalBaseVersion string $GHOSTTY_VERSION" "$plist" 2>/dev/null || \
+  /usr/libexec/PlistBuddy -c "Set :OpenTermTerminalBaseVersion $GHOSTTY_VERSION" "$plist"
+/usr/libexec/PlistBuddy -c 'Add :OpenTermEngineSource string source' "$plist" 2>/dev/null || \
+  /usr/libexec/PlistBuddy -c 'Set :OpenTermEngineSource source' "$plist"
+
+for key in \
+  NSAppleEventsUsageDescription \
+  NSBluetoothAlwaysUsageDescription \
+  NSCalendarsUsageDescription \
+  NSCameraUsageDescription \
+  NSContactsUsageDescription \
+  NSLocalNetworkUsageDescription \
+  NSLocationUsageDescription \
+  NSMicrophoneUsageDescription \
+  NSMotionUsageDescription \
+  NSPhotoLibraryUsageDescription \
+  NSRemindersUsageDescription \
+  NSSpeechRecognitionUsageDescription \
+  NSSystemAdministrationUsageDescription; do
+  value=$(/usr/libexec/PlistBuddy -c "Print :$key" "$plist" 2>/dev/null || true)
+  case "$value" in
+    *Ghostty*)
+      fixed=$(printf '%s' "$value" | sed 's/Ghostty/OpenTerm/g')
+      /usr/libexec/PlistBuddy -c "Set :$key $fixed" "$plist"
+      ;;
+  esac
+done
 
 codesign --force --deep --sign - --timestamp=none "$app"
 codesign --verify --deep --strict --verbose=2 "$app"

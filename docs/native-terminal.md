@@ -7,10 +7,29 @@
 - `dist/OpenTerm.app`
 - `dist/OpenTerm-0.1.0-alpha-macos-arm64.dmg`
 
-The app uses Ghostty 1.3.1 for standards-compliant VT emulation, PTYs, Metal
-rendering, CoreText, tabs, splits, scrollback, selection, and shell integration.
-OpenTerm contributes the app identity, native launcher, configuration, mascot
-icon, evidence engine, provider adapters, bundled RTK, and `ai-*` tools.
+The app builds Ghostty 1.3.1 **from a git clone** of
+[ghostty-org/ghostty](https://github.com/ghostty-org/ghostty) checked out at the
+commit pinned in `native/ghostty.lock`. OpenTerm branding and behavior changes are
+applied **directly inside** `native/ghostty/` (not at packaging time), then the
+engine is built with `zig build`.
+evidence engine, provider adapters, bundled RTK, and `ai-*` tools on top.
+
+Clone and brand the engine source (first time, or after bumping `native/ghostty.lock`):
+
+```sh
+make clone-ghostty
+```
+
+Edit OpenTerm engine code directly under `native/ghostty/` (Swift, Zig, menus, etc.).
+Re-run `make clone-ghostty` only when refreshing upstream; set `GHOSTTY_FORCE_SYNC=1`
+to reset to the pinned commit and re-apply branding (this overwrites local edits).
+
+Build the engine (Zig GhosttyKit + Xcode `Ghostty.app`):
+
+```sh
+make terminal
+```
+Override the engine with `GHOSTTY_APP=/path/to/Ghostty.app make app`.
 
 The app also bundles two OpenTerm-owned native surfaces:
 
@@ -40,7 +59,20 @@ without modifying the application bundle.
 ## Reproducibility and signing
 
 Inputs and SHA-256 values are pinned in `native/ghostty.lock`. The build verifies
-Ghostty source, its official DMG, Zig, and bundled RTK before packaging.
+Zig and bundled RTK before compiling the terminal engine. Ghostty itself is pinned
+by git commit (`GHOSTTY_REVISION`) under `native/ghostty/`.
+
+Rebuild only the terminal engine:
+
+```sh
+make terminal
+```
+
+Full app (compile engine if needed, then package OpenTerm):
+
+```sh
+make app
+```
 
 The current app is ad-hoc signed and intended for local development. Public
 distribution still requires an Apple Developer ID, hardened-runtime entitlement
@@ -72,7 +104,7 @@ GHOSTTY_APP=/Volumes/OpenTerm/OpenTerm.app make app
 
 ## Known boundary
 
-This alpha wraps the official stable terminal payload. OpenTerm-specific command
-blocks, AI sidecar panels, daemon-owned persistent sessions, and direct
-libghostty integration are subsequent native slices. Automatic upstream updates
-are disabled so Ghostty cannot replace the OpenTerm bundle unexpectedly.
+OpenTerm compiles and brands the Ghostty engine, then wraps it with OpenTerm-specific
+launcher, shell, and tooling. Direct libghostty embedding, command blocks, daemon-owned
+persistent sessions, and docked AI sidecar panels are subsequent native slices.
+Automatic upstream Ghostty updates are disabled.

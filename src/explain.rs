@@ -66,9 +66,7 @@ struct ExplainOptions {
 }
 
 fn build_request(options: ExplainOptions) -> Result<Option<AskRequest>, String> {
-    if options.provider.requires_model() && options.model.is_none() {
-        return Err(format!("provider '{}' requires --model", options.provider));
-    }
+    let model = crate::providers::resolve_model(options.provider, options.model)?;
     let context = result_context(options.use_last, options.result)?;
     let focus = if options.question.is_empty() {
         "Explain this command output clearly and concisely. Highlight errors, next steps, and what matters for an agent.".to_owned()
@@ -78,7 +76,7 @@ fn build_request(options: ExplainOptions) -> Result<Option<AskRequest>, String> 
     let prompt = format!("{context}\n\nQuestion:\n{focus}");
     Ok(Some(AskRequest {
         provider: options.provider,
-        model: options.model,
+        model,
         prompt,
     }))
 }

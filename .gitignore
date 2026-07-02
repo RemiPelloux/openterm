@@ -1,6 +1,7 @@
 /target/
 /.cache/
 /dist/
+/native/ghostty/
 /.idea/
 /.vscode/
 .DS_Store

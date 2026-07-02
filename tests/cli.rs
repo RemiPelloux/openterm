@@ -14,8 +14,13 @@ fn openterm_as(name: &str) -> Command {
 
 #[cfg(unix)]
 fn create_link(binary: &std::path::Path, link: &std::path::Path) {
+    use std::io::ErrorKind;
     let _ = std::fs::remove_file(link);
-    std::os::unix::fs::symlink(binary, link).expect("create command link");
+    match std::os::unix::fs::symlink(binary, link) {
+        Ok(()) => {}
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
+        Err(error) => panic!("create command link: {error}"),
+    }
 }
 
 #[cfg(windows)]
@@ -47,6 +52,19 @@ fn ai_explain_rejects_last_and_result_together() {
 
     assert_eq!(output.status.code(), Some(2));
     assert!(stderr.contains("not both"));
+}
+
+#[test]
+fn ai_help_supports_markdown_output() {
+    let output = openterm_as("ai-help")
+        .arg("--markdown")
+        .output()
+        .expect("run ai-help --markdown");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(stdout.starts_with("# OpenTerm command reference"));
+    assert!(stdout.contains("```bash"));
 }
 
 #[test]

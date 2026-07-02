@@ -1,3 +1,4 @@
+use crate::providers::config;
 use std::process::Command;
 
 const REQUIRED_COMMANDS: [(&str, &[&str]); 3] = [
@@ -5,10 +6,10 @@ const REQUIRED_COMMANDS: [(&str, &[&str]); 3] = [
     ("rtk", &["--version"]),
     ("codex", &["--version"]),
 ];
-const API_KEYS: [(&str, &str); 3] = [
-    ("openai", "OPENAI_API_KEY"),
-    ("claude", "ANTHROPIC_API_KEY"),
-    ("mistral", "MISTRAL_API_KEY"),
+const API_PROVIDERS: [(crate::providers::Provider, &str); 3] = [
+    (crate::providers::Provider::OpenAi, "OPENAI_API_KEY"),
+    (crate::providers::Provider::Claude, "ANTHROPIC_API_KEY"),
+    (crate::providers::Provider::Mistral, "MISTRAL_API_KEY"),
 ];
 
 pub fn run() -> i32 {
@@ -26,18 +27,29 @@ pub fn run() -> i32 {
     }
 
     print_credentials();
+    if let Ok(path) = config::config_path() {
+        if path.exists() {
+            println!("  cfg providers: {}", path.display());
+        }
+    }
     i32::from(!healthy)
 }
 
 fn print_credentials() {
-    for (provider, variable) in API_KEYS {
-        let state = if std::env::var_os(variable).is_some() {
-            "configured"
-        } else {
-            "not configured"
-        };
+    for (provider, variable) in API_PROVIDERS {
+        let state = credential_state(provider, variable);
         println!("  api {provider}: {state} ({variable})");
     }
+}
+
+fn credential_state(provider: crate::providers::Provider, variable: &str) -> &'static str {
+    if std::env::var_os(variable).is_some() {
+        return "configured (env)";
+    }
+    if config::is_stored(provider) {
+        return "configured (openterm)";
+    }
+    "not configured"
 }
 
 fn command_version(command: &str, args: &[&str]) -> Result<String, String> {

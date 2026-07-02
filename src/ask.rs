@@ -10,7 +10,7 @@ Modes:
   --workspace   Include read-only cwd and Git context
   --result REF  Include bounded preview of a stored result
 
-API providers require --model and their provider API key environment variable.
+API providers require --model (or run ai-connect) and a configured API key.
 ai-ask gives advice only; it does not modify files or execute proposed commands.
 ";
 
@@ -75,14 +75,12 @@ fn build_request(options: AskOptions) -> Result<Option<AskRequest>, String> {
     if options.prompt.is_empty() {
         return Err("a question is required".to_owned());
     }
-    if options.provider.requires_model() && options.model.is_none() {
-        return Err(format!("provider '{}' requires --model", options.provider));
-    }
+    let model = crate::providers::resolve_model(options.provider, options.model)?;
     let question = options.prompt.join(" ");
     let full_prompt = attach_context(options.workspace, options.result, &question)?;
     Ok(Some(AskRequest {
         provider: options.provider,
-        model: options.model,
+        model,
         prompt: full_prompt,
     }))
 }
@@ -157,7 +155,10 @@ mod tests {
                 .map(str::to_owned)
                 .into_iter(),
         );
-        assert_eq!(result.unwrap_err(), "provider 'openai' requires --model");
+        assert_eq!(
+            result.unwrap_err(),
+            "provider 'openai' requires --model (run ai-connect --provider openai)"
+        );
     }
 
     #[test]

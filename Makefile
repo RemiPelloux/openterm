@@ -1,7 +1,13 @@
-.PHONY: app build check commands format release test verify
+.PHONY: app build check clone-ghostty commands format release terminal test verify
 
 app: release
 	./scripts/package-openterm-macos.sh
+
+clone-ghostty:
+	./scripts/clone-ghostty.sh
+
+terminal:
+	./scripts/build-terminal-macos.sh
 
 build:
 	./scripts/cargo.sh build

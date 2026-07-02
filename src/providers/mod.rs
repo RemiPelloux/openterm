@@ -1,5 +1,6 @@
 mod claude;
 mod codex;
+pub mod config;
 mod mistral;
 mod openai;
 
@@ -71,22 +72,40 @@ pub(super) fn model(request: &AskRequest) -> Result<&str, String> {
         .ok_or_else(|| format!("provider '{}' requires --model", request.provider))
 }
 
+pub fn resolve_model(provider: Provider, explicit: Option<String>) -> Result<Option<String>, String> {
+    if explicit.is_some() {
+        return Ok(explicit);
+    }
+    if !provider.requires_model() {
+        return Ok(None);
+    }
+    config::stored_model(provider)
+        .map(Some)
+        .ok_or_else(|| format!("provider '{provider}' requires --model (run ai-connect --provider {provider})"))
+}
+
 pub(super) fn api_key(variable: &str) -> Result<String, String> {
-    std::env::var(variable).map_err(|_| format!("{variable} is not configured"))
+    let provider = match variable {
+        "OPENAI_API_KEY" => Provider::OpenAi,
+        "ANTHROPIC_API_KEY" => Provider::Claude,
+        "MISTRAL_API_KEY" => Provider::Mistral,
+        other => return Err(format!("{other} is not configured")),
+    };
+    config::resolve_api_key(provider)
 }
 
 pub(super) fn http_error(provider: Provider, error: &ureq::Error) -> String {
     format!("{provider} request failed: {error}")
 }
 
-pub(super) fn http_agent() -> ureq::Agent {
+pub(crate) fn http_agent() -> ureq::Agent {
     ureq::Agent::config_builder()
         .max_redirects(0)
         .build()
         .into()
 }
 
-pub(super) fn read_json(
+pub(crate) fn read_json(
     provider: Provider,
     response: &mut ureq::http::Response<ureq::Body>,
 ) -> Result<serde_json::Value, String> {

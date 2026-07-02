@@ -5,7 +5,7 @@ root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 
 cache="$root/.cache/native"
 downloads="$cache/downloads"
-ghostty_source="$cache/ghostty-$GHOSTTY_VERSION"
+ghostty_dir="$root/native/ghostty"
 zig_source="$cache/zig-aarch64-macos-$ZIG_VERSION"
 
 download() {
@@ -26,18 +26,22 @@ verify() {
   fi
 }
 
-prepare_native_sources() {
+prepare_zig() {
   mkdir -p "$downloads"
   zig_archive="$downloads/zig-$ZIG_VERSION.tar.xz"
-  ghostty_archive="$downloads/ghostty-$GHOSTTY_VERSION.tar.gz"
   download "$ZIG_URL" "$zig_archive"
-  download "$GHOSTTY_URL" "$ghostty_archive"
   verify "$ZIG_SHA256" "$zig_archive"
-  verify "$GHOSTTY_SHA256" "$ghostty_archive"
   if [ ! -x "$zig_source/zig" ]; then
     tar -xJf "$zig_archive" -C "$cache"
   fi
-  if [ ! -f "$ghostty_source/build.zig" ]; then
-    tar -xzf "$ghostty_archive" -C "$cache"
+}
+
+prepare_native_sources() {
+  prepare_zig
+}
+
+prepare_ghostty_source() {
+  if [ ! -f "$ghostty_dir/build.zig" ]; then
+    "$(dirname "$0")/clone-ghostty.sh"
   fi
 }

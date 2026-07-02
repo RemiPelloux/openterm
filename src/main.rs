@@ -1,10 +1,14 @@
 mod agent_context;
 mod ask;
 mod cli;
+mod connect;
 mod doctor;
 mod explain;
 mod git_context;
 mod help;
+mod help_catalog;
+mod help_render;
+mod help_render_footer;
 mod panel_command;
 mod providers;
 mod results;
