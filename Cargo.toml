@@ -1,0 +1,38 @@
+[workspace]
+members = ["."]
+resolver = "3"
+
+[package]
+name = "openterm"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+description = "An AI-native terminal with token-aware command execution"
+
+[dependencies]
+chacha20poly1305 = "0.10.1"
+getrandom = "0.3.4"
+hex = "0.4.3"
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+sha2 = "0.10.9"
+ureq = { version = "3.3.0", default-features = false, features = ["json", "rustls"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+unused = { level = "deny", priority = -1 }
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+too_many_arguments = "deny"
+too_many_lines = "deny"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = 3
+panic = "abort"
+strip = "symbols"

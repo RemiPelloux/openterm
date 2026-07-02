@@ -1,0 +1,8 @@
+/target/
+/.cache/
+/dist/
+/.idea/
+/.vscode/
+.DS_Store
+*.swp
+*.swo

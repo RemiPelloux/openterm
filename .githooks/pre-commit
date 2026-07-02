@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+./scripts/check-size.sh
+./scripts/cargo.sh fmt --all -- --check
+

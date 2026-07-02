@@ -1,0 +1,115 @@
+---
+description: Canonical Pelloux execution discipline and Rust verification for OpenTerm
+alwaysApply: true
+---
+
+# Pelloux Guidelines — Canonical Spec
+
+Single source of truth for OpenTerm coding discipline. This file wins on numeric limits and workflow principles.
+
+## 1. Think Before Coding
+
+- State assumptions explicitly. If uncertain, ask.
+- Surface multiple interpretations — do not pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop and ask.
+
+### Pick the simplest fix (mandatory for non-trivial work)
+
+Before writing code, consider at least three plausible approaches:
+
+1. Fix at the failure point.
+2. Work around the failure elsewhere.
+3. Add a new pipeline or abstraction.
+
+Default to (1). If choosing (2) or (3), state why (1) cannot fully solve the request.
+
+## 2. Simplicity First
+
+- Minimum code that solves the problem. Nothing speculative.
+- No abstractions for single-use code.
+- No unrequested flexibility or configurability.
+- No error handling for impossible scenarios.
+- Rewrite 200 lines that could be 50.
+
+## 3. Surgical Changes
+
+- Touch only what the task requires.
+- Do not improve adjacent code unless asked.
+- Match existing repository patterns.
+- Mention pre-existing dead code; do not delete it unless asked.
+- Remove orphans created by the current change.
+
+Every changed line must trace directly to the request.
+
+## 4. Goal-Driven Execution
+
+Turn work into verifiable steps before editing:
+
+```text
+1. <step> → verify: <check>
+2. <step> → verify: <check>
+```
+
+For bug fixes, reproduce with a failing test before fixing it.
+
+## 5. Size and Shape Limits
+
+| Scope | Target | Hard error |
+|---|---:|---:|
+| General production file | 300 lines or fewer | More than 400 lines |
+| Function or method body | 25 lines or fewer | CI warning on new debt |
+| Parameters | 4 or fewer | CI warning on new debt |
+
+- No magic numbers; use named constants or configuration.
+- Prefer early returns to reduce nesting.
+
+Exemptions: tests, migrations, seeders, locale bundles, generated files, and static data blobs.
+
+## 6. Code Hygiene
+
+- No temporary debug output in commits.
+- No commented-out code.
+- No speculative abstractions.
+
+## 7. Git Workflow
+
+- Conventional Commits: `<type>(<scope>): <imperative subject ≤ 72 chars>`.
+- Never use `--no-verify` on deploy-bound pushes.
+
+## 8. Make / Test / Document
+
+1. Make the feature with minimum scope.
+2. Test happy and negative behavior paths.
+3. Run static verification before commit.
+
+Behavior changes require tests.
+
+## 9. Enforcement
+
+| Layer | Tool |
+|---|---|
+| Pre-commit | `.githooks/pre-commit` |
+| CI | `.github/workflows/ci.yml` |
+| Local audit | `make verify` |
+
+Rust verification:
+
+```sh
+make verify
+```
+
+This runs file-size enforcement, formatting, compilation, Clippy with warnings denied, and tests.
+
+## 10. Clean Dead Code
+
+- Remove unused imports, methods, and variables created by the current change.
+- Mention pre-existing issues; do not silently fix unrelated debt.
+
+## 11. OpenTerm Command Namespace
+
+- Every new user-facing tool executable starts with `ai-`.
+- `openterm` is the application launcher and control plane, not a tool namespace.
+- Internal typed command IDs may use names such as `fs.read`; their public executable must still be `ai-read`.
+- Add new command names to the central registry and test the prefix invariant.
+- Never shadow or replace an existing system executable such as `grep`, `cd`, or `ssh`.

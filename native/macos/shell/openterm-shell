@@ -1,0 +1,13 @@
+#!/bin/sh
+# OpenTerm login shell entry — must never fail; Ghostty falls back to plain zsh if we exit.
+
+bundle_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+
+OPENTERM_RESOURCES=${OPENTERM_RESOURCES:-$bundle_root}
+OPENTERM_ORIGINAL_ZDOTDIR=${OPENTERM_ORIGINAL_ZDOTDIR:-${ZDOTDIR:-$HOME}}
+ZDOTDIR="$OPENTERM_RESOURCES/shell/zsh"
+PATH="$OPENTERM_RESOURCES/bin:${PATH:-/usr/bin:/bin:/usr/sbin:/sbin}"
+
+export OPENTERM_RESOURCES OPENTERM_ORIGINAL_ZDOTDIR ZDOTDIR PATH
+
+exec /bin/zsh -l

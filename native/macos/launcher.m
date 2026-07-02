@@ -1,0 +1,91 @@
+#import <Foundation/Foundation.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+static BOOL configNeedsUpgrade(NSString *path) {
+    NSString *text = [NSString stringWithContentsOfFile:path
+                                               encoding:NSUTF8StringEncoding
+                                                  error:nil];
+    if (!text) {
+        return YES;
+    }
+    return ![text containsString:@"openterm-theme-version = 3"];
+}
+
+static void prepareSupport(NSString *resources) {
+    NSFileManager *files = NSFileManager.defaultManager;
+    NSURL *base = [files URLsForDirectory:NSApplicationSupportDirectory
+                                inDomains:NSUserDomainMask].firstObject;
+    NSString *support = [base.path stringByAppendingPathComponent:@"OpenTerm"];
+    NSString *config = [support stringByAppendingPathComponent:@"config.ghostty"];
+    NSString *source = [resources stringByAppendingPathComponent:
+                        @"openterm/default-config.ghostty"];
+    [files createDirectoryAtPath:support
+     withIntermediateDirectories:YES attributes:nil error:nil];
+    if (![files fileExistsAtPath:config] || configNeedsUpgrade(config)) {
+        if ([files fileExistsAtPath:config]) {
+            NSString *backup = [config stringByAppendingString:@".bak"];
+            [files removeItemAtPath:backup error:nil];
+            [files moveItemAtPath:config toPath:backup error:nil];
+        }
+        [files copyItemAtPath:source toPath:config error:nil];
+    }
+    NSString *data = [support stringByAppendingPathComponent:@"data"];
+    setenv("OPENTERM_DATA_DIR", data.fileSystemRepresentation, 1);
+}
+
+static void prependTools(NSString *resources) {
+    NSString *tools = [resources stringByAppendingPathComponent:@"openterm/bin"];
+    NSString *existing = NSProcessInfo.processInfo.environment[@"PATH"] ?: @"/usr/bin:/bin";
+    NSString *path = [NSString stringWithFormat:@"%@:%@", tools, existing];
+    setenv("PATH", path.UTF8String, 1);
+}
+
+static void startSplash(NSString *resources) {
+    NSString *path = [resources stringByAppendingPathComponent:@"openterm/openterm-splash"];
+    NSTask *task = [NSTask new];
+    task.executableURL = [NSURL fileURLWithPath:path];
+    [task launchAndReturnError:nil];
+}
+
+static void prepareShellEnvironment(NSString *resources) {
+    NSString *bundle = [resources stringByAppendingPathComponent:@"openterm"];
+    NSString *zdot = [bundle stringByAppendingPathComponent:@"shell/zsh"];
+    NSString *home = NSHomeDirectory();
+    setenv("OPENTERM_RESOURCES", bundle.fileSystemRepresentation, 1);
+    setenv("OPENTERM_ORIGINAL_ZDOTDIR", home.fileSystemRepresentation, 1);
+    setenv("ZDOTDIR", zdot.fileSystemRepresentation, 1);
+}
+
+static void prepareRuntime(NSString *resources) {
+    prepareSupport(resources);
+    prepareShellEnvironment(resources);
+    NSString *support = [NSFileManager.defaultManager
+        URLsForDirectory:NSApplicationSupportDirectory
+               inDomains:NSUserDomainMask].firstObject.path;
+    support = [support stringByAppendingPathComponent:@"OpenTerm"];
+    NSString *config = [support stringByAppendingPathComponent:@"config.ghostty"];
+    NSString *runtime = [support stringByAppendingPathComponent:@"runtime.ghostty"];
+    NSString *shell = [resources stringByAppendingPathComponent:@"openterm/shell/openterm-shell"];
+    NSString *text = [NSString stringWithFormat:
+                      @"config-file = \"%@\"\ncommand = direct:%@\n", config, shell];
+    [text writeToFile:runtime atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    setenv("GHOSTTY_CONFIG_PATH", runtime.fileSystemRepresentation, 1);
+}
+
+int main(int argc, char *argv[]) {
+    @autoreleasepool {
+        NSString *contents = NSBundle.mainBundle.bundlePath;
+        contents = [contents stringByAppendingPathComponent:@"Contents"];
+        NSString *resources = [contents stringByAppendingPathComponent:@"Resources"];
+        prepareRuntime(resources);
+        prependTools(resources);
+        startSplash(resources);
+        NSString *terminal = [contents stringByAppendingPathComponent:
+                              @"MacOS/openterm-terminal"];
+        execv(terminal.fileSystemRepresentation, argv);
+        NSLog(@"OpenTerm could not start terminal engine: %s", strerror(errno));
+        return 127;
+    }
+    (void)argc;
+}
