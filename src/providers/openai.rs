@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use super::ask_prompt::INSTRUCTIONS;
 
 const DEFAULT_BASE: &str = "https://api.openai.com";
-const CACHE_KEY: &str = "openterm-ask-v2";
+pub(crate) const CACHE_KEY: &str = "openterm-ask-v3";
 
 pub fn ask(request: &AskRequest) -> Result<String, String> {
     let api_key = api_key("OPENAI_API_KEY")?;
@@ -21,7 +21,7 @@ pub fn ask(request: &AskRequest) -> Result<String, String> {
         .map_err(|error| http_error(Provider::OpenAi, &error))?;
     let value = read_json(Provider::OpenAi, &mut response)?;
     report_usage(&value);
-    parse(&value)
+    parse_text(&value)
 }
 
 pub(crate) fn url(path: &str) -> String {
@@ -49,7 +49,7 @@ fn normalize(value: &str) -> String {
     }
 }
 
-fn report_usage(value: &Value) {
+pub(crate) fn report_usage(value: &Value) {
     let cached = token_count(value, "cached_tokens");
     let input = token_count(value, "input_tokens").max(token_count(value, "prompt_tokens"));
     let output = token_count(value, "output_tokens").max(token_count(value, "completion_tokens"));
@@ -68,7 +68,7 @@ fn token_count(value: &Value, field: &str) -> u64 {
         .unwrap_or(0)
 }
 
-fn parse(value: &Value) -> Result<String, String> {
+pub(crate) fn parse_text(value: &Value) -> Result<String, String> {
     let text = value["output"]
         .as_array()
         .into_iter()
@@ -82,19 +82,22 @@ fn parse(value: &Value) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize, parse, resolve};
+    use super::{normalize, parse_text, resolve};
     use serde_json::json;
 
     #[test]
     fn parses_responses_api_text() {
         let value =
             json!({"output": [{"content": [{"type": "output_text", "text": "Use df -h."}]}]});
-        assert_eq!(parse(&value).as_deref(), Ok("Use df -h."));
+        assert_eq!(parse_text(&value).as_deref(), Ok("Use df -h."));
     }
 
     #[test]
     fn rejects_empty_response() {
-        assert_eq!(parse(&json!({})).unwrap_err(), "openai returned no text");
+        assert_eq!(
+            parse_text(&json!({})).unwrap_err(),
+            "openai returned no text"
+        );
     }
 
     #[test]

@@ -1,5 +1,6 @@
 use crate::providers::{AskRequest, Provider};
 use std::ffi::OsString;
+use std::io::Write;
 
 const HELP: &str =
     "Usage: ai-ask [--provider PROVIDER] [--model MODEL] [--workspace] [--result REF] <QUESTION>
@@ -25,9 +26,20 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
         Ok(None) => return print_help(),
         Err(error) => return print_error(&error, 2),
     };
+    answer_request(&request)
+}
 
-    match crate::ask_cache::complete(&request, || request.provider.ask(&request)) {
-        Ok(answer) => present(&answer),
+fn answer_request(request: &AskRequest) -> i32 {
+    if let Some(answer) = crate::ask_cache::lookup(request) {
+        eprintln!("openterm: ask-cache hit");
+        crate::hud::record_cache_hit();
+        return present(&answer);
+    }
+    match fetch_live(request) {
+        Ok(answer) => {
+            crate::ask_cache::store(request, &answer);
+            apply_only(&answer)
+        }
         Err(error) => print_error(&error, 1),
     }
 }
@@ -38,6 +50,26 @@ pub fn present(answer: &str) -> i32 {
     if !visible.ends_with('\n') {
         println!();
     }
+    apply_prompt(apply)
+}
+
+fn fetch_live(request: &AskRequest) -> Result<String, String> {
+    let mut live = crate::markdown_live::LiveRender::default();
+    let mut emit = |delta: &str| {
+        print!("{}", live.push(delta));
+        let _ = std::io::stdout().flush();
+    };
+    let answer = request.provider.ask_stream(request, &mut emit)?;
+    print!("{}", live.finish());
+    let _ = std::io::stdout().flush();
+    Ok(answer)
+}
+
+fn apply_only(answer: &str) -> i32 {
+    apply_prompt(crate::markdown::split_opencode(answer).1)
+}
+
+fn apply_prompt(apply: Option<String>) -> i32 {
     match apply {
         Some(prompt) => match crate::ask_apply::run(&prompt) {
             Ok(()) => 0,

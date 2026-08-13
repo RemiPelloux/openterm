@@ -5,6 +5,7 @@ pub mod config;
 mod local;
 mod mistral;
 mod openai;
+mod openai_stream;
 
 pub use local::base_url as local_base_url;
 pub use local::models as local_models;
@@ -50,6 +51,21 @@ impl Provider {
             Self::Mistral => mistral::ask(request),
             Self::Ollama | Self::LmStudio => local::ask(self, request),
         }
+    }
+
+    pub fn ask_stream(
+        self,
+        request: &AskRequest,
+        on_delta: &mut dyn FnMut(&str),
+    ) -> Result<String, String> {
+        if matches!(self, Self::OpenAi) {
+            return openai_stream::ask_stream(request, on_delta);
+        }
+        let answer = self.ask(request)?;
+        if !answer.is_empty() {
+            on_delta(&answer);
+        }
+        Ok(answer)
     }
 
     pub const fn requires_model(self) -> bool {

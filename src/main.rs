@@ -14,6 +14,7 @@ mod help_render;
 mod help_render_footer;
 mod hud;
 mod markdown;
+mod markdown_live;
 mod panel_command;
 mod providers;
 mod results;
