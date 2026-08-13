@@ -71,10 +71,19 @@ static void prepareRuntime(NSString *resources) {
     setenv("GHOSTTY_CONFIG_PATH", runtime.fileSystemRepresentation, 1);
 }
 
+/* We exec the engine in place, so the launch handshake LaunchServices sent to
+   this process image is gone by the time AppKit starts. Reporting "app" would
+   make the engine wait for an activation that can never arrive, leaving it with
+   no window until a second dock click. "cli" makes it activate itself. */
+static void declareLaunchSource(void) {
+    setenv("GHOSTTY_MAC_LAUNCH_SOURCE", "cli", 1);
+}
+
 static void launchTerminal(NSString *terminal, NSString *config, NSString *shell) {
     const char *engine = terminal.fileSystemRepresentation;
-    /* Ghostty CLI only accepts --key=value (not separate args). */
-    NSString *configFlag = [NSString stringWithFormat:@"--config-file=\"%@\"", config];
+    /* Ghostty CLI only accepts --key=value (not separate args). execv passes
+       argv verbatim, so quoting a value would become part of the path. */
+    NSString *configFlag = [NSString stringWithFormat:@"--config-file=%@", config];
     NSString *commandFlag = [NSString stringWithFormat:@"--command=direct:%@", shell];
     char *args[] = {
         (char *)engine,
@@ -93,6 +102,7 @@ int main(int argc, char *argv[]) {
         NSString *resources = [contents stringByAppendingPathComponent:@"Resources"];
         prepareRuntime(resources);
         prependTools(resources);
+        declareLaunchSource();
         startSplash(resources);
         NSString *support = [NSFileManager.defaultManager
             URLsForDirectory:NSApplicationSupportDirectory
