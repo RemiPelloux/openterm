@@ -4,7 +4,7 @@ use std::ffi::OsString;
 const HELP: &str =
     "Usage: ai-ask [--provider PROVIDER] [--model MODEL] [--workspace] [--result REF] <QUESTION>
 
-Providers: codex (default), openai, claude, mistral, ollama, lmstudio
+Providers: openai, claude, mistral, ollama, lmstudio, or codex (fallback)
 
 Modes:
   --workspace   Include read-only cwd and Git context
@@ -37,7 +37,7 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
 }
 
 fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, String> {
-    let mut provider = Provider::Codex;
+    let mut provider = crate::providers::config::default_provider();
     let mut model = None;
     let mut workspace = false;
     let mut result = None;
@@ -130,10 +130,14 @@ mod tests {
     use crate::providers::Provider;
 
     #[test]
-    fn codex_is_the_default_provider() {
-        let request = parse(["show disk usage".to_owned()].into_iter())
-            .expect("valid args")
-            .expect("request");
+    fn provider_flag_selects_codex() {
+        let request = parse(
+            ["--provider", "codex", "show disk usage"]
+                .map(str::to_owned)
+                .into_iter(),
+        )
+        .expect("valid args")
+        .expect("request");
         assert_eq!(request.provider, Provider::Codex);
     }
 
@@ -151,16 +155,16 @@ mod tests {
     }
 
     #[test]
-    fn api_provider_requires_model() {
-        let result = parse(
-            ["--provider", "openai", "hello"]
+    fn explicit_model_is_kept() {
+        let request = parse(
+            ["--provider", "openai", "--model", "gpt-test", "hello"]
                 .map(str::to_owned)
                 .into_iter(),
-        );
-        assert_eq!(
-            result.unwrap_err(),
-            "provider 'openai' requires --model (run ai-connect)"
-        );
+        )
+        .expect("valid args")
+        .expect("request");
+        assert_eq!(request.provider, Provider::OpenAi);
+        assert_eq!(request.model.as_deref(), Some("gpt-test"));
     }
 
     #[test]

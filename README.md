@@ -60,7 +60,9 @@ default. Their keys are currently stored in `~/.config/openterm/providers.json`
 
 - **Codex** — delegates authentication to the installed Codex CLI and never
   copies its OAuth tokens; run `codex login` first
-- **API providers** — prompt for an API key, then fetch live model lists
+- **API providers** — prompt for an API key, then fetch live model lists.
+  OpenAI-compatible gateways use `OPENAI_BASE_URL` or `base_url` in
+  `providers.json` (origin only, without `/v1`)
 - **Ollama / LM Studio** — no API key; start the local runtime, then pick a
   model it has already pulled. Override the host with `OLLAMA_HOST` or
   `LMSTUDIO_HOST` if it is not on the default port.

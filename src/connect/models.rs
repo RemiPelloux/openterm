@@ -22,7 +22,7 @@ pub fn list_for_provider(provider: Provider, api_key: &str) -> Vec<String> {
 
 fn fetch_openai(api_key: &str) -> Vec<String> {
     let Ok(mut response) = http_agent()
-        .get("https://api.openai.com/v1/models")
+        .get(crate::providers::openai_url("v1/models"))
         .header("Authorization", format!("Bearer {api_key}"))
         .call()
     else {

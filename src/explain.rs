@@ -7,7 +7,7 @@ const HELP: &str =
 Explain stored command output or the latest result using your selected model.
 Read-only — does not modify files or execute commands.
 
-Providers: codex (default), openai, claude, mistral, ollama, lmstudio
+Providers: openai, claude, mistral, ollama, lmstudio, or codex (fallback)
 ";
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
@@ -29,7 +29,7 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
 }
 
 fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, String> {
-    let mut provider = Provider::Codex;
+    let mut provider = crate::providers::config::default_provider();
     let mut model = None;
     let mut use_last = false;
     let mut result = None;

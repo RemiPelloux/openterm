@@ -118,17 +118,34 @@ fn connect_local_provider(provider: Provider) -> Result<String, String> {
 
 fn persist_model(provider: Provider, api_key: String, model: String) -> Result<String, String> {
     let mut settings = config::load();
+    let base_url = kept_openai_base(provider, &settings);
     config::store_entry(
         &mut settings,
         provider,
         ProviderEntry {
             api_key,
             model: Some(model.clone()),
+            base_url,
         },
     );
     settings.default_provider = Some(provider.to_string());
     config::save(&settings)?;
     Ok(model)
+}
+
+fn kept_openai_base(provider: Provider, settings: &config::ProviderSettings) -> Option<String> {
+    if provider != Provider::OpenAi {
+        return None;
+    }
+    std::env::var("OPENAI_BASE_URL")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| {
+            settings
+                .openai
+                .as_ref()
+                .and_then(|entry| entry.base_url.clone())
+        })
 }
 
 fn print_status() -> i32 {

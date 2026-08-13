@@ -33,6 +33,9 @@ pub struct ProviderEntry {
     pub api_key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    /// OpenAI-compatible gateway origin, without a trailing `/v1`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
 }
 
 pub fn config_dir() -> Result<PathBuf, String> {
@@ -85,6 +88,19 @@ pub fn stored_model(provider: Provider) -> Option<String> {
         return None;
     }
     entry(provider, &load())?.model.clone()
+}
+
+pub fn default_provider() -> Provider {
+    parse_default(load().default_provider.as_deref())
+}
+
+pub fn parse_default(name: Option<&str>) -> Provider {
+    name.and_then(|value| value.parse().ok())
+        .unwrap_or(Provider::Codex)
+}
+
+pub fn stored_base_url(provider: Provider) -> Option<String> {
+    entry(provider, &load())?.base_url.clone()
 }
 
 pub fn is_stored(provider: Provider) -> bool {
@@ -206,6 +222,7 @@ mod tests {
             openai: Some(super::ProviderEntry {
                 api_key: "sk-test".to_owned(),
                 model: Some("gpt-4o-mini".to_owned()),
+                base_url: Some("https://llm.example.com".to_owned()),
             }),
             ..ProviderSettings::default()
         };
@@ -246,6 +263,7 @@ mod tests {
             super::ProviderEntry {
                 api_key: String::new(),
                 model: Some("llama3.2".to_owned()),
+                base_url: None,
             },
         );
         save_to_base(&base, &settings).expect("save");
@@ -259,5 +277,21 @@ mod tests {
         let text = std::fs::read_to_string(base.join(super::FILE_NAME)).expect("read");
         assert!(!text.contains("api_key"));
         let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn parse_default_falls_back_to_codex() {
+        assert_eq!(
+            super::parse_default(None),
+            crate::providers::Provider::Codex
+        );
+        assert_eq!(
+            super::parse_default(Some("openai")),
+            crate::providers::Provider::OpenAi
+        );
+        assert_eq!(
+            super::parse_default(Some("unknown")),
+            crate::providers::Provider::Codex
+        );
     }
 }

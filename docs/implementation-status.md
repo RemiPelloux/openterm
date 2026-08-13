@@ -17,7 +17,7 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 
 - `ai-ask` read-only command.
 - Codex CLI one-shot adapter using ephemeral read-only execution.
-- OpenAI Responses API adapter.
+- OpenAI Responses API adapter, with optional `base_url` / `OPENAI_BASE_URL`.
 - Claude Messages API adapter.
 - Mistral Chat Completions adapter.
 - Bounded API response parsing with redirects disabled.

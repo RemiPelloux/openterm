@@ -71,9 +71,11 @@ Do not add those fields until the interactive client consumes them.
 
 ### OpenAI
 
-- Endpoint: `POST https://api.openai.com/v1/responses`.
-- Authentication: bearer token from `OPENAI_API_KEY`.
-- Model: required explicitly by `ai-ask`.
+- Endpoint: `POST {base}/v1/responses`.
+- Base URL: `OPENAI_BASE_URL`, else `base_url` in `providers.json`, else
+  `https://api.openai.com`.
+- Authentication: bearer token from `OPENAI_API_KEY` or `providers.json`.
+- Model: required explicitly by `ai-ask`, or the model saved by `ai-connect`.
 - Response parser: concatenates text content from response output messages.
 
 ### Claude
@@ -158,6 +160,8 @@ default_provider = "codex"
 
 [llm.providers.openai]
 model = "<user-selected-model>"
+# Optional OpenAI-compatible gateway origin (no trailing /v1)
+# base_url = "https://example.com"
 
 [llm.providers.claude]
 model = "<user-selected-model>"

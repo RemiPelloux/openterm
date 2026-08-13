@@ -7,6 +7,7 @@ mod openai;
 
 pub use local::base_url as local_base_url;
 pub use local::models as local_models;
+pub(crate) use openai::url as openai_url;
 
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
