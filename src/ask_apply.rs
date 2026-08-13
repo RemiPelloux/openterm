@@ -1,5 +1,5 @@
 use crate::markdown;
-use std::io::IsTerminal;
+use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -20,23 +20,43 @@ pub fn run(prompt: &str) -> Result<(), String> {
 }
 
 fn invoke(prompt: &str) -> Result<std::process::Output, String> {
+    if prompt.trim().is_empty() {
+        return Err("OpenCode prompt was empty".to_owned());
+    }
+    let mut child = opencode_command()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .map_err(|error| format!("opencode failed to start: {error}"))?;
+    write_prompt(child.stdin.take(), prompt)?;
+    child
+        .wait_with_output()
+        .map_err(|error| format!("opencode failed: {error}"))
+}
+
+fn opencode_command() -> Command {
     let mut command = Command::new(opencode_program());
-    command
-        .args([
-            "--dangerously-skip-permissions",
-            "--print",
-            "--output-format",
-            "text",
-            "--no-session-persistence",
-        ])
-        .stderr(Stdio::inherit());
+    command.args([
+        "--dangerously-skip-permissions",
+        "--print",
+        "--output-format",
+        "text",
+        "--no-session-persistence",
+    ]);
     if let Some(home) = std::env::var_os("HOME") {
-        command.arg("--add-dir").arg(home);
+        command.arg(format!("--add-dir={}", PathBuf::from(home).display()));
     }
     command
-        .arg(prompt)
-        .output()
-        .map_err(|error| format!("opencode failed to start: {error}"))
+}
+
+fn write_prompt(stdin: Option<std::process::ChildStdin>, prompt: &str) -> Result<(), String> {
+    let Some(mut stdin) = stdin else {
+        return Err("opencode stdin was not available".to_owned());
+    };
+    stdin
+        .write_all(prompt.as_bytes())
+        .map_err(|error| format!("opencode prompt write failed: {error}"))
 }
 
 fn print_opencode_output(output: &std::process::Output) {
@@ -152,5 +172,11 @@ mod tests {
         let diff = file_diff(Path::new("/tmp/zshrc"), "a\n", "b\n").expect("diff");
         assert!(diff.contains("-a"));
         assert!(diff.contains("+b"));
+    }
+
+    #[test]
+    fn empty_prompt_is_rejected() {
+        assert!(super::invoke("").unwrap_err().contains("empty"));
+        assert!(super::invoke("   ").unwrap_err().contains("empty"));
     }
 }

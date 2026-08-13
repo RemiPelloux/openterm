@@ -186,7 +186,8 @@ fn ai_ask_help_describes_markdown_and_opencode() {
 
     assert!(output.status.success());
     assert!(stdout.contains("markdown"));
-    assert!(stdout.contains("opencode --dangerously-skip-permissions"));
+    assert!(stdout.contains("opencode --print"));
+    assert!(stdout.contains("stdin"));
 }
 
 #[test]

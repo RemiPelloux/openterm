@@ -7,8 +7,8 @@ const HELP: &str =
 Providers: openai, claude, mistral, ollama, lmstudio, or codex (fallback)
 
 ai-ask inspects cwd, Git, and shell startup files, then answers in markdown.
-If the task needs edits, it writes an OpenCode prompt and applies it with:
-  opencode --dangerously-skip-permissions --print
+If the task needs edits, it writes an OpenCode prompt and applies it with
+opencode --print, passing that prompt on stdin.
 
 Modes:
   --workspace   Include cwd and Git context (on by default)
