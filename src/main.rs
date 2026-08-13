@@ -10,6 +10,7 @@ mod help;
 mod help_catalog;
 mod help_render;
 mod help_render_footer;
+mod hud;
 mod panel_command;
 mod providers;
 mod results;

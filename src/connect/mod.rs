@@ -130,6 +130,7 @@ fn persist_model(provider: Provider, api_key: String, model: String) -> Result<S
     );
     settings.default_provider = Some(provider.to_string());
     config::save(&settings)?;
+    crate::hud::sync_from_config();
     Ok(model)
 }
 
@@ -160,6 +161,7 @@ fn print_status() -> i32 {
         println!("Default provider: {default}");
     }
     println!("\nRun ai-connect to connect with arrow-key selection.");
+    crate::hud::sync_from_config();
     0
 }
 

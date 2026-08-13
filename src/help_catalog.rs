@@ -32,7 +32,7 @@ const AGENT: &[Entry] = &[
     },
     Entry {
         name: "ai-panel",
-        summary: "Ask the agent in this terminal (no extra window)",
+        summary: "Open the agent side panel without stealing shell focus",
         usage: "ai-panel",
     },
     Entry {
@@ -57,6 +57,11 @@ const SYSTEM: &[Entry] = &[
         name: "ai-ui",
         summary: "Open native appearance settings",
         usage: "ai-ui",
+    },
+    Entry {
+        name: "ai-settings",
+        summary: "Open appearance, AI provider, and token settings",
+        usage: "ai-settings",
     },
     Entry {
         name: "ai-version",

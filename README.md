@@ -179,6 +179,7 @@ send a stable prompt-cache key so the gateway can reuse prefixes.
 
 ```sh
 ai-panel
+openterm settings
 ai-ask "what is using the most disk space here?"
 ai-ask --workspace "summarize this repo"
 ai-ask --provider openai --model gpt-4o-mini "explain df -h"

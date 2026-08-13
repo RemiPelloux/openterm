@@ -50,10 +50,12 @@ fn normalize(value: &str) -> String {
 
 fn report_usage(value: &Value) {
     let cached = token_count(value, "cached_tokens");
+    let input = token_count(value, "input_tokens").max(token_count(value, "prompt_tokens"));
+    let output = token_count(value, "output_tokens").max(token_count(value, "completion_tokens"));
+    crate::hud::record_usage(input, output, cached);
     if cached == 0 {
         return;
     }
-    let input = token_count(value, "input_tokens").max(token_count(value, "prompt_tokens"));
     eprintln!("openterm: prompt-cache cached={cached} input={input}");
 }
 

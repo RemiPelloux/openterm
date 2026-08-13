@@ -96,7 +96,7 @@ fn launcher_lists_new_rtk_commands() {
 }
 
 #[test]
-fn ai_panel_help_stays_in_terminal() {
+fn ai_panel_help_describes_side_panel() {
     let output = openterm_as("ai-panel")
         .arg("--help")
         .output()
@@ -104,16 +104,29 @@ fn ai_panel_help_stays_in_terminal() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success());
-    assert!(stdout.contains("inside this terminal"));
+    assert!(stdout.contains("side panel"));
+    assert!(stdout.contains("focus"));
 }
 
 #[test]
-fn ai_panel_requires_a_tty() {
+fn ai_panel_without_native_binary_is_unavailable() {
     let output = openterm_as("ai-panel").output().expect("run ai-panel");
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert_eq!(output.status.code(), Some(2));
-    assert!(stderr.contains("interactive terminal"));
+    assert_eq!(output.status.code(), Some(127));
+    assert!(stderr.contains("OpenTerm.app"));
+}
+
+#[test]
+fn ai_settings_help_mentions_launcher_alias() {
+    let output = openterm_as("ai-settings")
+        .arg("--help")
+        .output()
+        .expect("run ai-settings --help");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(stdout.contains("openterm settings"));
 }
 
 #[test]

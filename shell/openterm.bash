@@ -9,14 +9,19 @@ ai-cd() {
 }
 
 _openterm_draw_prompt() {
-  local git_ansi
+  local git_ansi hud hud_file
   git_ansi=$(ai-context --ansi 2>/dev/null)
-  if [ -n "$git_ansi" ]; then
-    PS1=$'\033[38;5;238m╭─\033[0m \033[38;5;45m◆\033[0m \033[38;5;81m\033[1mOpenTerm\033[0m \033[38;5;238m·\033[0m \033[38;5;252m\w\033[0m\n\033[38;5;238m│\033[0m '"${git_ansi}"$'\n\033[38;5;238m╰─\033[0m \033[38;5;45m❯\033[0m '
-  else
-    PS1=$'\033[38;5;238m╭─\033[0m \033[38;5;45m◆\033[0m \033[38;5;81m\033[1mOpenTerm\033[0m \033[38;5;238m·\033[0m \033[38;5;252m\w\033[0m\n\033[38;5;238m╰─\033[0m \033[38;5;45m❯\033[0m '
+  hud="ai · idle"
+  hud_file="${OPENTERM_DATA_DIR:-$HOME/Library/Application Support/OpenTerm}/hud"
+  if [ -r "$hud_file" ]; then
+    IFS= read -r hud < "$hud_file"
   fi
-  printf '\033]0;OpenTerm · %s\007' "$PWD"
+  if [ -n "$git_ansi" ]; then
+    PS1=$'\033[38;5;238m╭─\033[0m \033[38;5;45m◆\033[0m \033[38;5;81m\033[1mOpenTerm\033[0m \033[38;5;238m·\033[0m \033[38;5;252m\w\033[0m \033[38;5;238m·\033[0m \033[38;5;45m'"${hud}"$'\033[0m\n\033[38;5;238m│\033[0m '"${git_ansi}"$'\n\033[38;5;238m╰─\033[0m \033[38;5;45m❯\033[0m '
+  else
+    PS1=$'\033[38;5;238m╭─\033[0m \033[38;5;45m◆\033[0m \033[38;5;81m\033[1mOpenTerm\033[0m \033[38;5;238m·\033[0m \033[38;5;252m\w\033[0m \033[38;5;238m·\033[0m \033[38;5;45m'"${hud}"$'\033[0m\n\033[38;5;238m╰─\033[0m \033[38;5;45m❯\033[0m '
+  fi
+  printf '\033]0;OpenTerm · %s · %s\007' "$PWD" "$hud"
 }
 
 _openterm_output_spacing() {

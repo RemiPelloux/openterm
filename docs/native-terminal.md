@@ -34,9 +34,9 @@ Override the engine with `GHOSTTY_APP=/path/to/Ghostty.app make app`.
 The app also bundles two OpenTerm-owned native surfaces:
 
 - an accessory mascot animation shown while the terminal starts;
-- `OpenTermUI`, a SwiftUI appearance editor with live preview and config reload.
+- `OpenTermUI`, a SwiftUI settings window (appearance, AI provider, token status).
 
-`ai-panel` is an in-terminal agent prompt, not a separate window.
+`ai-panel` opens a non-activating agent side panel so the shell keeps focus.
 
 ## Runtime layout
 

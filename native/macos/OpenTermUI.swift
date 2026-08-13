@@ -173,9 +173,7 @@ struct SettingsView: View {
             footer
         }
         .padding(26)
-        .frame(width: 850, height: 650)
         .background(background)
-        .onAppear { NSApp.activate(ignoringOtherApps: true) }
     }
 
     private var header: some View {
@@ -282,7 +280,16 @@ extension Color {
 @main
 struct OpenTermUI: App {
     var body: some Scene {
-        WindowGroup("OpenTermUI") { SettingsView() }
+        WindowGroup("OpenTerm Settings") {
+            TabView {
+                SettingsView()
+                    .tabItem { Label("Appearance", systemImage: "paintbrush") }
+                AIPane()
+                    .tabItem { Label("AI", systemImage: "cpu") }
+            }
+            .frame(width: 880, height: 700)
+            .onAppear { NSApp.activate(ignoringOtherApps: true) }
+        }
             .windowResizability(.contentSize)
             .commands { CommandGroup(replacing: .newItem) {} }
     }

@@ -61,8 +61,13 @@ cp "$root/target/release/openterm" "$bin/openterm"
 done
 xcrun swiftc -O -parse-as-library -module-cache-path "$cache/swift-modules" \
   -framework SwiftUI -framework AppKit \
-  "$root/native/macos/OpenTermUI.swift" -o "$bin/openterm-ui"
+  "$root/native/macos/OpenTermUI.swift" \
+  "$root/native/macos/AIPane.swift" \
+  -o "$bin/openterm-ui"
 ln -s openterm-ui "$bin/OpenTermUI"
+xcrun swiftc -O -module-cache-path "$cache/swift-modules" \
+  -framework SwiftUI -framework AppKit -framework CoreGraphics \
+  "$root/native/macos/AgentPanel.swift" -o "$bin/openterm-panel"
 xcrun swiftc -O -module-cache-path "$cache/swift-modules" -framework AppKit \
   "$root/native/macos/Splash.swift" -o "$bundle/openterm-splash"
 

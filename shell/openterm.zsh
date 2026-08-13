@@ -26,7 +26,10 @@ precmd_functions=(${precmd_functions:#_omp*})
 # nothing regardless of how large the repository is.
 _openterm_draw_prompt() {
   local path=$'%F{252}%~%f'
-  local head=$'%F{238}╭─%f %F{45}◆%f %F{81}%BOpenTerm%b %F{238}·%f '"${path}"
+  local hud="ai · idle"
+  local hud_file="${OPENTERM_DATA_DIR:-$HOME/Library/Application Support/OpenTerm}/hud"
+  [[ -r $hud_file ]] && IFS= read -r hud < "$hud_file"
+  local head=$'%F{238}╭─%f %F{45}◆%f %F{81}%BOpenTerm%b %F{238}·%f '"${path}"$' %F{238}·%f %F{45}'"${hud}"$'%f'
   if [ -n "$OPENTERM_GIT_LINE" ]; then
     PROMPT="${head}"$'
 %F{238}│%f '"${OPENTERM_GIT_LINE}"$'
@@ -36,7 +39,7 @@ _openterm_draw_prompt() {
 %F{238}╰─%f %F{45}❯%f '
   fi
   RPROMPT=""
-  print -Pn "\e]0;OpenTerm · %~\a"
+  print -Pn "\e]0;OpenTerm · %~ · ${hud}\a"
 }
 
 _openterm_git_ready() {

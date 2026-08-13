@@ -36,12 +36,6 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
     }
 }
 
-pub fn ask_workspace(question: &str) -> Result<String, String> {
-    let request = parse(["--workspace".to_owned(), question.to_owned()].into_iter())?
-        .ok_or_else(|| "a question is required".to_owned())?;
-    crate::ask_cache::complete(&request, || request.provider.ask(&request))
-}
-
 fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, String> {
     let mut provider = crate::providers::config::default_provider();
     let mut model = None;

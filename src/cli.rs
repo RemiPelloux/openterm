@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-const CORE_COMMANDS: [&str; 22] = [
+const CORE_COMMANDS: [&str; 23] = [
     "ai-help",
     "ai-ask",
     "ai-explain",
@@ -24,6 +24,7 @@ const CORE_COMMANDS: [&str; 22] = [
     "ai-usage",
     "ai-context",
     "ai-ui",
+    "ai-settings",
 ];
 
 pub fn run(program: &OsStr, args: impl IntoIterator<Item = OsString>) -> i32 {
@@ -42,6 +43,7 @@ pub fn run(program: &OsStr, args: impl IntoIterator<Item = OsString>) -> i32 {
         "ai-version" => print_version(),
         "ai-context" => crate::git_context::run(args),
         "ai-ui" => crate::ui_command::run(args),
+        "ai-settings" => crate::ui_command::run_settings(args),
         "ai-run" => crate::run_command::run(args),
         name if crate::results::is_command(name) => crate::results::run(name, args),
         "openterm" => run_launcher(args),
@@ -55,6 +57,9 @@ fn run_launcher(args: impl IntoIterator<Item = OsString>) -> i32 {
         None => crate::ui::show_cockpit(),
         Some(value) if matches!(value.to_str(), Some("help" | "--help" | "-h")) => print_help(),
         Some(value) if value == "mascot" => crate::ui::animate_mascot(),
+        Some(value) if value == "settings" => {
+            crate::ui_command::run_settings(std::iter::empty::<OsString>())
+        }
         Some(value) if value == "--print-command-names" => print_command_names(),
         Some(value) => print_unknown(&value.to_string_lossy()),
     }

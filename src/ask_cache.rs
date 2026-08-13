@@ -28,6 +28,7 @@ pub fn complete(
 ) -> Result<String, String> {
     if let Some(answer) = lookup(request) {
         eprintln!("openterm: ask-cache hit");
+        crate::hud::record_cache_hit();
         return Ok(answer);
     }
     let answer = fetch()?;
