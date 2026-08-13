@@ -148,7 +148,25 @@ for key in \
   esac
 done
 
-codesign --force --deep --sign - --timestamp=none "$app"
+# Apple deprecates --deep for signing. Seal nested code from the inside out so
+# every nested bundle carries its own signature before the outer one is sealed.
+sign() {
+  codesign --force --sign - --timestamp=none "$1"
+}
+
+find "$app/Contents" -depth \
+  \( -name '*.framework' -o -name '*.app' -o -name '*.xpc' -o -name '*.bundle' \) \
+  -print | while IFS= read -r nested; do
+  sign "$nested"
+done
+
+for tool in "$bin"/* "$bundle/openterm-splash" "$app/Contents/MacOS"/*; do
+  if [ -f "$tool" ] && [ ! -L "$tool" ]; then
+    sign "$tool"
+  fi
+done
+
+sign "$app"
 codesign --verify --deep --strict --verbose=2 "$app"
 "$app/Contents/MacOS/openterm-terminal" +validate-config \
   --config-file="$bundle/default-config.ghostty"

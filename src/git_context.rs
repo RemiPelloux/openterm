@@ -19,7 +19,7 @@ struct GitContext {
 }
 
 pub fn prompt_line() -> Option<String> {
-    load().map(|context| prompt(&context))
+    load_status().map(|context| prompt(&context))
 }
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
@@ -31,7 +31,11 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
             return 2;
         }
     };
-    let Some(context) = load() else {
+    let loaded = match mode {
+        Mode::Prompt | Mode::Ansi => load_status(),
+        Mode::Human | Mode::Json => load(),
+    };
+    let Some(context) = loaded else {
         if !matches!(mode, Mode::Prompt | Mode::Ansi) {
             println!("Not inside a Git worktree.");
         }
@@ -59,14 +63,27 @@ fn parse_mode(args: &[OsString]) -> Result<Mode, &'static str> {
     }
 }
 
+/// Everything the prompt needs, in one `git` process. This runs on every prompt
+/// draw, so it must not grow a second call. `--no-optional-locks` keeps a prompt
+/// redraw from contending with a concurrent git command for the index lock.
+fn load_status() -> Option<GitContext> {
+    let status = git_output(&[
+        "--no-optional-locks",
+        "status",
+        "--porcelain=v2",
+        "--branch",
+        "--show-stash",
+    ])?;
+    Some(parse_status(&status))
+}
+
 fn load() -> Option<GitContext> {
+    let mut context = load_status()?;
     let root = git_output(&["rev-parse", "--show-toplevel"])?;
-    let status = git_output(&["status", "--porcelain=v2", "--branch", "--show-stash"])?;
-    let mut context = parse_status(&status);
-    context.root.clone_from(&root);
     context.repo = Path::new(&root)
         .file_name()
         .map_or_else(|| root.clone(), |name| name.to_string_lossy().into_owned());
+    context.root = root;
     Some(context)
 }
 

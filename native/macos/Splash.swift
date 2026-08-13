@@ -67,10 +67,15 @@ let normal = "         ▄▄         \n   ▗▄▄▄▄▄██▄▄▄▄�
 let arms = "         ▄▄         \n╲  ▗▄▄▄▄▄██▄▄▄▄▄▖  ╱\n ╲ ▐ ────────── ▌ ╱ \n   ▐   ●    ●   ▌   \n   ▐    ╰──╯    ▌   \n   ▝▀▀▀▀▀▀▀▀▀▀▀▀▘   \n     ▝▘      ▝▘     "
 let frames = [normal, normal, arms, arms, arms, normal, normal, arms, arms, normal]
 
+// The splash floats above the terminal window, so it has to clear the screen
+// well before someone would reach for the keyboard.
+let frameInterval = 0.04
+let holdInterval = 0.12
+
 panel.orderFrontRegardless()
 for frame in frames {
     mascot.stringValue = frame
-    RunLoop.current.run(until: Date().addingTimeInterval(0.06))
+    RunLoop.current.run(until: Date().addingTimeInterval(frameInterval))
 }
-RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+RunLoop.current.run(until: Date().addingTimeInterval(holdInterval))
 panel.orderOut(nil)

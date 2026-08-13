@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 static BOOL configNeedsUpgrade(NSString *path) {
@@ -12,11 +13,16 @@ static BOOL configNeedsUpgrade(NSString *path) {
     return ![text containsString:@"openterm-theme-version = 5"];
 }
 
+static NSString *supportDir(void) {
+    NSURL *base = [NSFileManager.defaultManager
+        URLsForDirectory:NSApplicationSupportDirectory
+               inDomains:NSUserDomainMask].firstObject;
+    return [base.path stringByAppendingPathComponent:@"OpenTerm"];
+}
+
 static void prepareSupport(NSString *resources) {
     NSFileManager *files = NSFileManager.defaultManager;
-    NSURL *base = [files URLsForDirectory:NSApplicationSupportDirectory
-                                inDomains:NSUserDomainMask].firstObject;
-    NSString *support = [base.path stringByAppendingPathComponent:@"OpenTerm"];
+    NSString *support = supportDir();
     NSString *config = [support stringByAppendingPathComponent:@"config.ghostty"];
     NSString *source = [resources stringByAppendingPathComponent:
                         @"openterm/default-config.ghostty"];
@@ -41,7 +47,17 @@ static void prependTools(NSString *resources) {
     setenv("PATH", path.UTF8String, 1);
 }
 
+/* The splash floats above the terminal, so anyone who wants the window
+   immediately can set OPENTERM_SPLASH=0 in the bundle's LSEnvironment. */
+static BOOL splashDisabled(void) {
+    const char *value = getenv("OPENTERM_SPLASH");
+    return value != NULL && strcmp(value, "0") == 0;
+}
+
 static void startSplash(NSString *resources) {
+    if (splashDisabled()) {
+        return;
+    }
     NSString *path = [resources stringByAppendingPathComponent:@"openterm/openterm-splash"];
     NSTask *task = [NSTask new];
     task.executableURL = [NSURL fileURLWithPath:path];
@@ -57,18 +73,22 @@ static void prepareShellEnvironment(NSString *resources) {
     setenv("ZDOTDIR", zdot.fileSystemRepresentation, 1);
 }
 
-static void prepareRuntime(NSString *resources) {
+/* Builds the one file the engine reads, so the CLI flag and GHOSTTY_CONFIG_PATH
+   can never describe different configurations. It pulls in the user's theme by
+   reference rather than copying it, so edits to config.ghostty take effect on
+   the next launch. Returns the path to pass to the engine. */
+static NSString *prepareRuntime(NSString *resources) {
     prepareSupport(resources);
     prepareShellEnvironment(resources);
-    NSString *support = [NSFileManager.defaultManager
-        URLsForDirectory:NSApplicationSupportDirectory
-               inDomains:NSUserDomainMask].firstObject.path;
-    support = [support stringByAppendingPathComponent:@"OpenTerm"];
+    NSString *support = supportDir();
     NSString *runtime = [support stringByAppendingPathComponent:@"runtime.ghostty"];
+    NSString *config = [support stringByAppendingPathComponent:@"config.ghostty"];
     NSString *shell = [resources stringByAppendingPathComponent:@"openterm/shell/openterm-shell"];
-    NSString *text = [NSString stringWithFormat:@"command = direct:%@\n", shell];
+    NSString *text = [NSString stringWithFormat:@"config-file = %@\ncommand = direct:%@\n",
+                                                config, shell];
     [text writeToFile:runtime atomically:YES encoding:NSUTF8StringEncoding error:nil];
     setenv("GHOSTTY_CONFIG_PATH", runtime.fileSystemRepresentation, 1);
+    return runtime;
 }
 
 /* We exec the engine in place, so the launch handshake LaunchServices sent to
@@ -79,17 +99,15 @@ static void declareLaunchSource(void) {
     setenv("GHOSTTY_MAC_LAUNCH_SOURCE", "cli", 1);
 }
 
-static void launchTerminal(NSString *terminal, NSString *config, NSString *shell) {
+static void launchTerminal(NSString *terminal, NSString *runtime) {
     const char *engine = terminal.fileSystemRepresentation;
     /* Ghostty CLI only accepts --key=value (not separate args). execv passes
        argv verbatim, so quoting a value would become part of the path. */
-    NSString *configFlag = [NSString stringWithFormat:@"--config-file=%@", config];
-    NSString *commandFlag = [NSString stringWithFormat:@"--command=direct:%@", shell];
+    NSString *configFlag = [NSString stringWithFormat:@"--config-file=%@", runtime];
     char *args[] = {
         (char *)engine,
         (char *)"--config-default-files=false",
         (char *)configFlag.UTF8String,
-        (char *)commandFlag.UTF8String,
         NULL,
     };
     execv(engine, args);
@@ -100,20 +118,13 @@ int main(int argc, char *argv[]) {
         NSString *contents = NSBundle.mainBundle.bundlePath;
         contents = [contents stringByAppendingPathComponent:@"Contents"];
         NSString *resources = [contents stringByAppendingPathComponent:@"Resources"];
-        prepareRuntime(resources);
+        NSString *runtime = prepareRuntime(resources);
         prependTools(resources);
         declareLaunchSource();
         startSplash(resources);
-        NSString *support = [NSFileManager.defaultManager
-            URLsForDirectory:NSApplicationSupportDirectory
-                   inDomains:NSUserDomainMask].firstObject.path;
-        support = [support stringByAppendingPathComponent:@"OpenTerm"];
-        NSString *config = [support stringByAppendingPathComponent:@"config.ghostty"];
-        NSString *shell = [resources stringByAppendingPathComponent:
-                           @"openterm/shell/openterm-shell"];
         NSString *terminal = [contents stringByAppendingPathComponent:
                               @"MacOS/openterm-terminal"];
-        launchTerminal(terminal, config, shell);
+        launchTerminal(terminal, runtime);
         NSLog(@"OpenTerm could not start terminal engine: %s", strerror(errno));
         return 127;
     }
