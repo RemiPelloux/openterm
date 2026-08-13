@@ -55,11 +55,16 @@ pub fn present(answer: &str) -> i32 {
 
 fn fetch_live(request: &AskRequest) -> Result<String, String> {
     let mut live = crate::markdown_live::LiveRender::default();
+    let mut wait = crate::ask_wait::FirstWordWait::start();
     let mut emit = |delta: &str| {
+        if delta.chars().any(|ch| !ch.is_whitespace()) {
+            wait.clear();
+        }
         print!("{}", live.push(delta));
         let _ = std::io::stdout().flush();
     };
     let answer = request.provider.ask_stream(request, &mut emit)?;
+    wait.clear();
     print!("{}", live.finish());
     let _ = std::io::stdout().flush();
     Ok(answer)

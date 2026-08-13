@@ -2,6 +2,7 @@ mod agent_context;
 mod ask;
 mod ask_apply;
 mod ask_cache;
+mod ask_wait;
 mod chat;
 mod cli;
 mod connect;
