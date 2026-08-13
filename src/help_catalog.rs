@@ -101,6 +101,11 @@ const EVIDENCE: &[Entry] = &[
         summary: "Move a result into recoverable trash",
         usage: "ai-forget RESULT",
     },
+    Entry {
+        name: "ai-restore",
+        summary: "Restore a result from recoverable trash",
+        usage: "ai-restore RESULT",
+    },
 ];
 
 const HISTORY: &[Entry] = &[

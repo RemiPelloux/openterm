@@ -13,6 +13,7 @@ const USAGE: &str = "usage:
   ai-export RESULT PATH [--stream stdout|stderr|all]
   ai-pin RESULT
   ai-forget RESULT
+  ai-restore RESULT
 ";
 const DEFAULT_PAGE_BYTES: usize = 16_384;
 
@@ -35,6 +36,7 @@ fn dispatch(name: &str, args: &[OsString]) -> AppResult<()> {
         "ai-export" => export(&store, args),
         "ai-pin" => pin(&store, args),
         "ai-forget" => forget(&store, args),
+        "ai-restore" => restore(&store, args),
         _ => Err("unknown result command".into()),
     }
 }
@@ -118,6 +120,15 @@ fn forget(store: &Store, args: &[OsString]) -> AppResult<()> {
         );
     }
     println!("moved {id} to recoverable trash");
+    Ok(())
+}
+
+fn restore(store: &Store, args: &[OsString]) -> AppResult<()> {
+    let id = required_arg(args, 0, "result reference")?;
+    if !store.restore(id)? {
+        return Err(format!("result '{id}' was not found or is not trashed").into());
+    }
+    println!("restored {id}");
     Ok(())
 }
 

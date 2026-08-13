@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 
 use super::Provider;
 
@@ -15,18 +20,6 @@ pub struct ProviderSettings {
     pub claude: Option<ProviderEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mistral: Option<ProviderEntry>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub codex: Option<CodexEntry>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CodexEntry {
-    pub access_token: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub refresh_token: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    pub source: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -43,7 +36,7 @@ pub fn config_dir() -> Result<PathBuf, String> {
     if let Some(path) = std::env::var_os("XDG_CONFIG_HOME") {
         return Ok(PathBuf::from(path).join("openterm"));
     }
-    home_dir()?.join(".config").join("openterm").pipe(Ok)
+    Ok(home_dir()?.join(".config").join("openterm"))
 }
 
 pub fn config_path() -> Result<PathBuf, String> {
@@ -66,9 +59,7 @@ pub fn save_to_base(base: &Path, settings: &ProviderSettings) -> Result<(), Stri
     std::fs::create_dir_all(base).map_err(|error| error.to_string())?;
     let path = base.join(FILE_NAME);
     let json = serde_json::to_string_pretty(settings).map_err(|error| error.to_string())?;
-    std::fs::write(&path, format!("{json}\n")).map_err(|error| error.to_string())?;
-    restrict_permissions(&path);
-    Ok(())
+    write_private(&path, format!("{json}\n").as_bytes())
 }
 
 pub fn save(settings: &ProviderSettings) -> Result<(), String> {
@@ -77,28 +68,22 @@ pub fn save(settings: &ProviderSettings) -> Result<(), String> {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
     save_to_base(
-        path.parent().ok_or_else(|| "invalid config path".to_owned())?,
+        path.parent()
+            .ok_or_else(|| "invalid config path".to_owned())?,
         settings,
     )
 }
 
 pub fn stored_model(provider: Provider) -> Option<String> {
     if provider == Provider::Codex {
-        return load().codex.as_ref().and_then(|entry| entry.model.clone());
+        return None;
     }
     entry(provider, &load())?.model.clone()
 }
 
-pub fn codex_connected() -> bool {
-    load()
-        .codex
-        .as_ref()
-        .is_some_and(|entry| !entry.access_token.is_empty())
-}
-
 pub fn is_stored(provider: Provider) -> bool {
     if provider == Provider::Codex {
-        return codex_connected();
+        return false;
     }
     entry(provider, &load()).is_some_and(|entry| !entry.api_key.is_empty())
 }
@@ -148,28 +133,32 @@ fn home_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "HOME is not set".to_owned())
 }
 
-fn restrict_permissions(path: &Path) {
+fn write_private(path: &Path, contents: &[u8]) -> Result<(), String> {
+    let temporary = temporary_path(path)?;
+    let result = write_temporary(&temporary, contents)
+        .and_then(|()| std::fs::rename(&temporary, path).map_err(|error| error.to_string()));
+    if result.is_err() {
+        let _ = std::fs::remove_file(temporary);
+    }
+    result
+}
+
+fn write_temporary(path: &Path, contents: &[u8]) -> Result<(), String> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
     #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Ok(metadata) = std::fs::metadata(path) {
-            let mut permissions = metadata.permissions();
-            permissions.set_mode(0o600);
-            let _ = std::fs::set_permissions(path, permissions);
-        }
-    }
+    options.mode(0o600);
+    let mut file = options.open(path).map_err(|error| error.to_string())?;
+    file.write_all(contents)
+        .map_err(|error| error.to_string())?;
+    file.sync_all().map_err(|error| error.to_string())
 }
 
-trait Pipe: Sized {
-    fn pipe<F, R>(self, function: F) -> R
-    where
-        F: FnOnce(Self) -> R,
-    {
-        function(self)
-    }
+fn temporary_path(path: &Path) -> Result<PathBuf, String> {
+    let mut bytes = [0_u8; 8];
+    getrandom::fill(&mut bytes).map_err(|error| error.to_string())?;
+    Ok(path.with_extension(format!("tmp-{}", hex::encode(bytes))))
 }
-
-impl<T> Pipe for T {}
 
 #[cfg(test)]
 mod tests {
@@ -195,8 +184,22 @@ mod tests {
         save_to_base(&base, &settings).expect("save");
         let loaded = load_from_base(&base);
         assert_eq!(loaded, settings);
+        assert_private(&base.join(super::FILE_NAME));
         let _ = std::fs::remove_dir_all(base);
     }
+
+    #[cfg(unix)]
+    fn assert_private(path: &std::path::Path) {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(path)
+            .expect("metadata")
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
+
+    #[cfg(not(unix))]
+    fn assert_private(_path: &std::path::Path) {}
 
     #[test]
     fn config_dir_uses_home_when_unset() {

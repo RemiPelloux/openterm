@@ -4,6 +4,7 @@ mod history_commands;
 mod retention;
 mod schema;
 mod store;
+mod store_paths;
 #[cfg(test)]
 mod store_tests;
 mod types;
@@ -18,13 +19,14 @@ pub(crate) use types::StoreStats;
 
 type AppResult<T> = Result<T, Box<dyn Error>>;
 
-const COMMANDS: [&str; 10] = [
+const COMMANDS: [&str; 11] = [
     "ai-result",
     "ai-expand",
     "ai-page",
     "ai-export",
     "ai-pin",
     "ai-forget",
+    "ai-restore",
     "ai-history",
     "ai-search-history",
     "ai-clean-history",

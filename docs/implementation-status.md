@@ -37,6 +37,9 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 - Safe argv forwarding without shell interpolation.
 - Child exit-code and Unix signal-code preservation.
 - Command-not-found behavior uses exit code 127.
+- Managed wrappers for lint/format, TypeScript, JavaScript tests, Python, Rust,
+  Go, Ruby, JVM, and .NET development output.
+- 39 total RTK-backed commands with unique-name and route tests.
 
 ### Persistent evidence foundation
 
@@ -45,6 +48,7 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 - XChaCha20-Poly1305 encrypted stdout/stderr blobs.
 - `ai-result`, `ai-expand`, `ai-page`, `ai-export`, `ai-pin`, and `ai-forget`.
 - Recoverable trash instead of immediate evidence deletion.
+- `ai-restore` with paired stdout/stderr moves and rollback on partial failure.
 - Single RTK execution; evidence retrieval never reruns the managed command.
 - Evidence is honestly marked `rtk-filtered-output` until native extraction.
 - zsh and Bash `ai-cd` parent-shell integrations.
@@ -84,6 +88,12 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 - Branch, staged, modified, renamed, untracked, conflicts, ahead/behind, and stashes.
 - Git context in terminal title and zsh right prompt; Bash renders it above the prompt.
 
+### Provider hardening
+
+- `ai-connect` delegates Codex authentication to the installed Codex CLI.
+- OpenTerm does not parse, copy, transmit, or persist Codex OAuth tokens.
+- Direct-provider model discovery remains isolated by transport.
+
 ## Current verification
 
 Run:
@@ -111,8 +121,9 @@ Planned acceptance criteria:
 - record RTK/OpenTerm compressor version and selected filter;
 - compare native filters against pinned upstream golden fixtures;
 - redact secret-bearing argv fields before expanding managed command coverage;
-- move evidence keys into Keychain and Secret Service;
-- implement trash restore and opt-in 30-day purge.
+- move evidence and provider keys into Keychain and Secret Service;
+- implement opt-in 30-day trash purge.
+- migrate and remove legacy plaintext provider secrets.
 
 ## Later
 
@@ -122,6 +133,6 @@ Planned acceptance criteria:
 - Documentation agent.
 - OpenTerm-native AI sidecar and semantic command blocks.
 - Plugin SDK and marketplace.
-- Remote/SSH and database adapters.
+- Remote/SSH adapters.
 
 These remain roadmap commitments, not implemented features.

@@ -8,7 +8,7 @@ pub struct RtkCommand {
     pub(crate) prefix: &'static [&'static str],
 }
 
-const COMMANDS: [RtkCommand; 19] = [
+const COMMANDS: [RtkCommand; 39] = [
     RtkCommand::new(
         "ai-rg",
         "Fast ripgrep search (prefer over ai-grep)",
@@ -32,6 +32,34 @@ const COMMANDS: [RtkCommand; 19] = [
     RtkCommand::new("ai-test", "Failure-focused test execution", &["test"]),
     RtkCommand::new("ai-log", "Deduplicated log inspection", &["log"]),
     RtkCommand::new("ai-docker", "Compact Docker output", &["docker"]),
+    RtkCommand::new("ai-lint", "Grouped ESLint diagnostics", &["lint"]),
+    RtkCommand::new("ai-format", "Compact universal format checks", &["format"]),
+    RtkCommand::new("ai-prettier", "Compact Prettier checks", &["prettier"]),
+    RtkCommand::new("ai-tsc", "Grouped TypeScript diagnostics", &["tsc"]),
+    RtkCommand::new("ai-jest", "Failure-focused Jest output", &["jest"]),
+    RtkCommand::new("ai-vitest", "Failure-focused Vitest output", &["vitest"]),
+    RtkCommand::new(
+        "ai-playwright",
+        "Compact Playwright test output",
+        &["playwright"],
+    ),
+    RtkCommand::new("ai-pytest", "Failure-focused pytest output", &["pytest"]),
+    RtkCommand::new("ai-ruff", "Compact Ruff diagnostics", &["ruff"]),
+    RtkCommand::new("ai-mypy", "Grouped mypy diagnostics", &["mypy"]),
+    RtkCommand::new("ai-rspec", "Failure-focused RSpec output", &["rspec"]),
+    RtkCommand::new("ai-rubocop", "Compact RuboCop diagnostics", &["rubocop"]),
+    RtkCommand::new("ai-cargo", "Compact Cargo output", &["cargo"]),
+    RtkCommand::new("ai-npm", "Compact npm script output", &["npm"]),
+    RtkCommand::new("ai-pnpm", "Compact pnpm output", &["pnpm"]),
+    RtkCommand::new("ai-go", "Compact Go toolchain output", &["go"]),
+    RtkCommand::new(
+        "ai-golangci",
+        "Compact golangci-lint diagnostics",
+        &["golangci-lint"],
+    ),
+    RtkCommand::new("ai-gradle", "Compact Gradle output", &["gradlew"]),
+    RtkCommand::new("ai-maven", "Compact Maven output", &["mvn"]),
+    RtkCommand::new("ai-dotnet", "Compact .NET output", &["dotnet"]),
 ];
 
 impl RtkCommand {
@@ -130,7 +158,8 @@ const fn signal_exit_code(_status: ExitStatus) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{find, run_program};
+    use super::{all, find, run_program};
+    use std::collections::HashSet;
     use std::ffi::OsString;
 
     #[test]
@@ -144,6 +173,15 @@ mod tests {
     #[test]
     fn unknown_command_has_no_mapping() {
         assert!(find("ai-missing").is_none());
+    }
+
+    #[test]
+    fn command_names_are_unique_and_routed() {
+        let names = all().iter().map(|command| command.name);
+        let unique = names.clone().collect::<HashSet<_>>();
+
+        assert_eq!(unique.len(), names.count());
+        assert!(all().iter().all(|command| !command.prefix.is_empty()));
     }
 
     #[cfg(unix)]

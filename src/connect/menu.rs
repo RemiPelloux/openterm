@@ -45,7 +45,7 @@ pub fn read_api_key(provider: Provider) -> Result<String, String> {
 
 fn label(provider: Provider) -> &'static str {
     match provider {
-        Provider::Codex => "ChatGPT subscription via device login",
+        Provider::Codex => "Codex CLI session (run codex login first)",
         Provider::OpenAi => "OpenAI API key",
         Provider::Claude => "Anthropic API key",
         Provider::Mistral => "Mistral API key",

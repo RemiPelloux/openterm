@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-const CORE_COMMANDS: [&str; 21] = [
+const CORE_COMMANDS: [&str; 22] = [
     "ai-help",
     "ai-ask",
     "ai-explain",
@@ -16,6 +16,7 @@ const CORE_COMMANDS: [&str; 21] = [
     "ai-export",
     "ai-pin",
     "ai-forget",
+    "ai-restore",
     "ai-run",
     "ai-history",
     "ai-search-history",
@@ -96,6 +97,7 @@ fn print_unknown(command: &str) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::{CORE_COMMANDS, run};
+    use std::collections::HashSet;
     use std::ffi::OsString;
 
     #[test]
@@ -110,6 +112,18 @@ mod tests {
                 .iter()
                 .all(|command| command.name.starts_with("ai-"))
         );
+    }
+
+    #[test]
+    fn core_commands_match_help_catalog() {
+        let commands = CORE_COMMANDS.into_iter().collect::<HashSet<_>>();
+        let documented = crate::help_catalog::SECTIONS
+            .iter()
+            .flat_map(|section| section.entries.iter())
+            .map(|entry| entry.name)
+            .collect::<HashSet<_>>();
+
+        assert_eq!(commands, documented);
     }
 
     #[test]

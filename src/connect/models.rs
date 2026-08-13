@@ -1,17 +1,6 @@
 use crate::providers::{Provider, http_agent, read_json};
 use serde_json::Value;
 
-const CODEX_MODELS_URL: &str =
-    "https://chatgpt.com/backend-api/codex/models?client_version=1.0.0";
-
-const CODEX_FALLBACK: &[&str] = &[
-    "gpt-5.5",
-    "gpt-5.4-mini",
-    "gpt-5.4",
-    "gpt-5.3-codex",
-    "gpt-5.3-codex-spark",
-];
-
 pub fn list_for_provider(provider: Provider, api_key: &str) -> Vec<String> {
     let models = match provider {
         Provider::OpenAi => fetch_openai(api_key),
@@ -21,15 +10,6 @@ pub fn list_for_provider(provider: Provider, api_key: &str) -> Vec<String> {
     };
     if models.is_empty() {
         fallback_for(provider)
-    } else {
-        models
-    }
-}
-
-pub fn list_codex(access_token: &str) -> Vec<String> {
-    let models = fetch_codex(access_token);
-    if models.is_empty() {
-        CODEX_FALLBACK.iter().map(|model| (*model).to_owned()).collect()
     } else {
         models
     }
@@ -78,38 +58,6 @@ fn fetch_mistral(api_key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn fetch_codex(access_token: &str) -> Vec<String> {
-    let Ok(mut response) = http_agent()
-        .get(CODEX_MODELS_URL)
-        .header("Authorization", format!("Bearer {access_token}"))
-        .call()
-    else {
-        return Vec::new();
-    };
-    read_json(Provider::Codex, &mut response)
-        .ok()
-        .map(|value| parse_codex_models(&value))
-        .unwrap_or_default()
-}
-
-fn parse_codex_models(value: &Value) -> Vec<String> {
-    let mut ranked = Vec::new();
-    for item in value["models"].as_array().into_iter().flatten() {
-        let slug = item["slug"].as_str().unwrap_or("").trim();
-        if slug.is_empty() {
-            continue;
-        }
-        let visibility = item["visibility"].as_str().unwrap_or("").to_ascii_lowercase();
-        if visibility == "hide" || visibility == "hidden" {
-            continue;
-        }
-        let priority = json_i64(&item["priority"]).unwrap_or(10_000);
-        ranked.push((priority, slug.to_owned()));
-    }
-    ranked.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
-    ranked.into_iter().map(|(_, slug)| slug).collect()
-}
-
 fn sort_models(value: &Value, created_field: &str) -> Vec<String> {
     let mut ranked = Vec::new();
     for item in value["data"].as_array().into_iter().flatten() {
@@ -125,11 +73,9 @@ fn sort_models(value: &Value, created_field: &str) -> Vec<String> {
 }
 
 fn json_i64(value: &Value) -> Option<i64> {
-    value.as_i64().or_else(|| {
-        value
-            .as_u64()
-            .and_then(|number| i64::try_from(number).ok())
-    })
+    value
+        .as_i64()
+        .or_else(|| value.as_u64().and_then(|number| i64::try_from(number).ok()))
 }
 
 fn fallback_for(provider: Provider) -> Vec<String> {
@@ -150,29 +96,14 @@ fn fallback_for(provider: Provider) -> Vec<String> {
             "mistral-small-latest".into(),
             "codestral-latest".into(),
         ],
-        Provider::Codex => CODEX_FALLBACK.iter().map(|model| (*model).to_owned()).collect(),
+        Provider::Codex => Vec::new(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{json_i64, parse_codex_models, sort_models};
+    use super::{json_i64, sort_models};
     use serde_json::json;
-
-    #[test]
-    fn codex_models_sort_by_priority() {
-        let value = json!({
-            "models": [
-                {"slug": "gpt-5.3-codex", "priority": 2},
-                {"slug": "gpt-5.5", "priority": 1, "visibility": "visible"},
-                {"slug": "hidden-model", "priority": 0, "visibility": "hide"}
-            ]
-        });
-        assert_eq!(
-            parse_codex_models(&value),
-            vec!["gpt-5.5".to_owned(), "gpt-5.3-codex".to_owned()]
-        );
-    }
 
     #[test]
     fn api_models_sort_newest_first() {

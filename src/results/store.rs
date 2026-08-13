@@ -1,11 +1,12 @@
 use super::AppResult;
 use super::crypto::Cipher;
 use super::schema;
+use super::store_paths::{create_private_directory, data_root};
 use super::types::{ResultRecord, SaveRequest, StoreStats, Stream};
 use rusqlite::{Connection, OptionalExtension, params};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct Store {
     root: PathBuf,
@@ -136,12 +137,18 @@ impl Store {
         if record.pinned || record.trashed_ms.is_some() {
             return Ok(false);
         }
-        self.move_to_trash(id, "stdout")?;
-        self.move_to_trash(id, "stderr")?;
-        self.connection.execute(
-            "UPDATE results SET trashed_ms = ?1 WHERE id = ?2",
-            params![now_ms, id],
-        )?;
+        self.move_and_mark(id, false, Some(now_ms))?;
+        Ok(true)
+    }
+
+    pub fn restore(&self, id: &str) -> AppResult<bool> {
+        let Some(record) = self.get(id)? else {
+            return Ok(false);
+        };
+        if record.trashed_ms.is_none() {
+            return Ok(false);
+        }
+        self.move_and_mark(id, true, None)?;
         Ok(true)
     }
 
@@ -181,10 +188,35 @@ impl Store {
         self.cipher.decrypt(&encrypted).map_err(Into::into)
     }
 
-    fn move_to_trash(&self, id: &str, stream: &str) -> AppResult<()> {
-        let source = self.blob_path(id, stream, false);
-        let destination = self.blob_path(id, stream, true);
-        fs::rename(source, destination)?;
+    fn move_and_mark(
+        &self,
+        id: &str,
+        source_trashed: bool,
+        trashed_ms: Option<u64>,
+    ) -> AppResult<()> {
+        self.move_blobs(id, source_trashed)?;
+        let result = self.connection.execute(
+            "UPDATE results SET trashed_ms = ?1 WHERE id = ?2",
+            params![trashed_ms, id],
+        );
+        if result.is_err() {
+            let _ = self.move_blobs(id, !source_trashed);
+        }
+        result?;
+        Ok(())
+    }
+
+    fn move_blobs(&self, id: &str, source_trashed: bool) -> AppResult<()> {
+        let target_trashed = !source_trashed;
+        let source_out = self.blob_path(id, "stdout", source_trashed);
+        let target_out = self.blob_path(id, "stdout", target_trashed);
+        fs::rename(&source_out, &target_out)?;
+        let source_err = self.blob_path(id, "stderr", source_trashed);
+        let target_err = self.blob_path(id, "stderr", target_trashed);
+        if let Err(error) = fs::rename(source_err, target_err) {
+            let _ = fs::rename(target_out, source_out);
+            return Err(error.into());
+        }
         Ok(())
     }
 
@@ -257,28 +289,4 @@ fn result_id(request: &SaveRequest) -> AppResult<String> {
     digest.update(std::process::id().to_le_bytes());
     digest.update(random);
     Ok(format!("res_{}", &hex::encode(digest.finalize())[..20]))
-}
-
-fn data_root() -> AppResult<PathBuf> {
-    if let Some(path) = std::env::var_os("OPENTERM_DATA_DIR") {
-        return Ok(PathBuf::from(path));
-    }
-    let home = std::env::var_os("HOME").ok_or("HOME is not set")?;
-    let home = PathBuf::from(home);
-    if cfg!(target_os = "macos") {
-        return Ok(home.join("Library/Application Support/OpenTerm"));
-    }
-    Ok(home.join(".local/share/openterm"))
-}
-
-#[cfg(unix)]
-fn create_private_directory(path: &Path) -> std::io::Result<()> {
-    use std::os::unix::fs::DirBuilderExt;
-    let mut builder = fs::DirBuilder::new();
-    builder.recursive(true).mode(0o700).create(path)
-}
-
-#[cfg(not(unix))]
-fn create_private_directory(path: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(path)
 }

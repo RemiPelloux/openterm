@@ -72,7 +72,10 @@ pub(super) fn model(request: &AskRequest) -> Result<&str, String> {
         .ok_or_else(|| format!("provider '{}' requires --model", request.provider))
 }
 
-pub fn resolve_model(provider: Provider, explicit: Option<String>) -> Result<Option<String>, String> {
+pub fn resolve_model(
+    provider: Provider,
+    explicit: Option<String>,
+) -> Result<Option<String>, String> {
     if explicit.is_some() {
         return Ok(explicit);
     }
@@ -81,7 +84,7 @@ pub fn resolve_model(provider: Provider, explicit: Option<String>) -> Result<Opt
     }
     config::stored_model(provider)
         .map(Some)
-        .ok_or_else(|| format!("provider '{provider}' requires --model (run ai-connect --provider {provider})"))
+        .ok_or_else(|| format!("provider '{provider}' requires --model (run ai-connect)"))
 }
 
 pub(super) fn api_key(variable: &str) -> Result<String, String> {

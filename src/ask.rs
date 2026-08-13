@@ -157,7 +157,7 @@ mod tests {
         );
         assert_eq!(
             result.unwrap_err(),
-            "provider 'openai' requires --model (run ai-connect --provider openai)"
+            "provider 'openai' requires --model (run ai-connect)"
         );
     }
 

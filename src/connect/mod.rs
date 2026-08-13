@@ -1,20 +1,19 @@
-mod codex_auth;
 mod menu;
 mod models;
 
-use crate::providers::config::{self, CodexEntry, ProviderEntry};
 use crate::providers::Provider;
+use crate::providers::config::{self, ProviderEntry};
 use std::ffi::OsString;
 use std::io::{self, IsTerminal};
+use std::process::Command;
 
-const HELP: &str =
-    "Usage: ai-connect [--status]
+const HELP: &str = "Usage: ai-connect [--status]
 
 Interactive provider setup for OpenTerm.
 
 Use arrow keys to pick a provider, then a model (sorted newest first).
 API keys are stored in ~/.config/openterm/providers.json (mode 600).
-Codex uses the same device-code browser login as OpenAgents.
+Codex authentication is delegated to the installed Codex CLI.
 ";
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
@@ -80,19 +79,13 @@ fn run_wizard() -> Result<(), String> {
 }
 
 fn connect_codex() -> Result<String, String> {
-    let tokens = codex_auth::ensure_codex_session()?;
-    let choices = models::list_codex(&tokens.access_token);
-    let model = menu::select_model(&choices, "Select Codex model")?;
+    if !codex_session_ready() {
+        return Err("Codex CLI is unavailable or not authenticated; run 'codex login'".to_owned());
+    }
     let mut settings = config::load();
-    settings.codex = Some(CodexEntry {
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        model: Some(model.clone()),
-        source: tokens.source,
-    });
     settings.default_provider = Some("codex".to_owned());
     config::save(&settings)?;
-    Ok(model)
+    Ok("Codex CLI default model".to_owned())
 }
 
 fn connect_api_provider(provider: Provider) -> Result<String, String> {
@@ -137,16 +130,10 @@ fn print_status() -> i32 {
 
 fn describe(provider: Provider) -> String {
     if provider == Provider::Codex {
-        if config::codex_connected() {
-            let model = config::stored_model(provider)
-                .map(|value| format!(", model {value}"))
-                .unwrap_or_default();
-            return format!("connected (openterm{model})");
+        if codex_session_ready() {
+            return "connected (Codex CLI session)".to_owned();
         }
-        if codex_auth::import_cli_tokens().is_some() {
-            return "ready (codex CLI session)".to_owned();
-        }
-        return "not connected — run ai-connect".to_owned();
+        return "not connected — run codex login".to_owned();
     }
     let env = config::env_var(provider).expect("api provider");
     if std::env::var_os(env).is_some() {
@@ -159,6 +146,13 @@ fn describe(provider: Provider) -> String {
         return format!("connected (openterm{model})");
     }
     "not connected — run ai-connect".to_owned()
+}
+
+fn codex_session_ready() -> bool {
+    Command::new("codex")
+        .args(["login", "status"])
+        .output()
+        .is_ok_and(|output| output.status.success())
 }
 
 fn print_help() -> i32 {

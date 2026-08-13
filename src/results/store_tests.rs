@@ -37,6 +37,24 @@ fn pinned_results_cannot_be_trashed() {
     std::fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+fn trashed_results_can_be_restored() {
+    let root = test_root();
+    let store = Store::open_at(root.clone()).expect("store");
+    let id = store.save(&request()).expect("save");
+
+    assert!(!store.restore(&id).unwrap());
+    assert!(store.trash(&id, 42).unwrap());
+    assert!(store.get(&id).unwrap().unwrap().trashed_ms.is_some());
+    assert!(store.restore(&id).unwrap());
+
+    let record = store.get(&id).unwrap().unwrap();
+    assert!(record.trashed_ms.is_none());
+    assert_eq!(store.evidence(&record, Stream::Stdout).unwrap(), b"hello");
+    assert!(!store.restore("res_missing").unwrap());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 fn request() -> SaveRequest {
     SaveRequest {
         command: "ai-test".into(),

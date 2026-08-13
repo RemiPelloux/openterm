@@ -53,13 +53,13 @@ Inside OpenTerm, run the interactive setup wizard:
 ai-connect
 ```
 
-Use arrow keys to pick a provider (Codex, OpenAI, Claude, Mistral), authenticate,
-then pick a model sorted newest-first. Credentials are stored in
-`~/.config/openterm/providers.json` (mode `600`). Environment variables still
-override saved keys.
+Use arrow keys to pick a provider (Codex, OpenAI, Claude, Mistral). Direct API
+providers then discover models and save the selected default. Their keys are
+currently stored in `~/.config/openterm/providers.json` (mode `600`), with
+environment variables taking precedence.
 
-- **Codex** — OpenAgents-style device login in the browser, or reuse an existing
-  Codex CLI session from `~/.codex/auth.json`
+- **Codex** — delegates authentication to the installed Codex CLI and never
+  copies its OAuth tokens; run `codex login` first
 - **API providers** — prompt for an API key, then fetch live model lists
 
 Check status without exposing secrets:
@@ -123,7 +123,8 @@ Run `ai-help` for the full catalog (supports `--markdown` and `--plain`).
 | Agent | `ai-ask`, `ai-connect`, `ai-explain`, `ai-panel`, `ai-workspace` |
 | System | `ai-doctor`, `ai-context`, `ai-ui`, `ai-version`, `ai-help` |
 | Search & inspect | `ai-rg`, `ai-read`, `ai-ls`, `ai-json`, `ai-tree`, `ai-find`, `ai-grep`, … |
-| Evidence | `ai-run`, `ai-result`, `ai-expand`, `ai-page`, `ai-export`, `ai-pin`, `ai-forget` |
+| Development | `ai-test`, `ai-lint`, `ai-cargo`, `ai-pytest`, `ai-tsc`, `ai-go`, `ai-gradle`, … |
+| Evidence | `ai-run`, `ai-result`, `ai-expand`, `ai-page`, `ai-export`, `ai-pin`, `ai-forget`, `ai-restore` |
 | History | `ai-history`, `ai-search-history`, `ai-clean-history`, `ai-usage` |
 
 RTK-backed commands print a stable evidence reference on stderr:
@@ -177,12 +178,14 @@ ai-ask --provider openai --model gpt-4o-mini "explain df -h"
 
 | Provider | Credential |
 |---|---|
-| Codex CLI / ChatGPT OAuth | `ai-connect` (device login) or existing `codex login` |
+| Codex CLI | Existing `codex login` session |
 | OpenAI Responses API | `ai-connect` or `OPENAI_API_KEY` |
 | Claude Messages API | `ai-connect` or `ANTHROPIC_API_KEY` |
 | Mistral Chat Completions | `ai-connect` or `MISTRAL_API_KEY` |
 
 `ai-doctor` reports configured / not configured only — never prints secrets.
+Direct-provider keys move to Keychain and Secret Service before the next
+distributable alpha.
 Provider architecture and safety rules: `docs/provider-architecture.md`.
 
 Enable the repository pre-commit hook once:

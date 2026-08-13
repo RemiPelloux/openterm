@@ -35,9 +35,9 @@ Every public tool command starts with `ai-`:
 ai-ask
 ai-doctor
 ai-version
-ai-grep       # planned
-ai-read       # planned
-ai-test       # planned
+ai-grep
+ai-read
+ai-test
 ```
 
 `openterm` remains the application launcher. Internal typed IDs such as `llm.ask` or `fs.read` are protocol names, not executables.
@@ -101,6 +101,10 @@ The first implementation uses `codex exec` because `ai-ask` is a one-shot comman
 
 The future terminal-integrated agent should use `codex app-server`, which provides authentication, threads, turns, approvals, and streamed events over JSON-RPC. Generate schemas from the installed Codex version rather than hand-maintaining them.
 
+`ai-connect` checks the installed CLI through `codex login status` and persists
+only OpenTerm behavioral settings. It does not read `~/.codex/auth.json`, call
+private Codex backends, embed OAuth client constants, or store Codex tokens.
+
 ## Safety modes
 
 `ai-ask` is advice-only:
@@ -123,7 +127,9 @@ Do not turn `ai-ask` into an implicit mutation path.
 
 - API keys are secrets; behavioral settings are not.
 - Read keys only at request time.
-- Prefer OS keychain-backed secret references when the configuration system lands.
+- Direct-provider keys currently use environment variables or a private
+  mode-0600 compatibility file. Move them to OS keychain-backed references
+  before the next distributable alpha.
 - Never store keys in command history, result records, prompts, or logs.
 - Never pass keys on command lines.
 - Bind credentials to their exact provider endpoint.

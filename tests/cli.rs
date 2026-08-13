@@ -91,6 +91,8 @@ fn launcher_lists_new_rtk_commands() {
     assert!(stdout.contains("ai-panel"));
     assert!(stdout.contains("ai-workspace"));
     assert!(stdout.contains("ai-json"));
+    assert!(stdout.contains("ai-pytest"));
+    assert!(stdout.contains("ai-cargo"));
 }
 
 #[test]
@@ -139,15 +141,23 @@ fn managed_command_stores_expandable_evidence() {
         .output()
         .expect("run managed command");
     let result_id = parse_result_id(&output.stderr);
-    let expanded = openterm_as("ai-expand")
-        .arg(result_id)
-        .env("OPENTERM_DATA_DIR", &root)
-        .output()
-        .expect("expand result");
+    let forgotten = result_command("ai-forget", &result_id, &root);
+    let restored = result_command("ai-restore", &result_id, &root);
+    let expanded = result_command("ai-expand", &result_id, &root);
 
     assert_eq!(output.stdout, b"stored evidence\n");
+    assert!(forgotten.status.success());
+    assert!(restored.status.success());
     assert_eq!(expanded.stdout, b"stored evidence\n");
     std::fs::remove_dir_all(root).expect("remove test root");
+}
+
+fn result_command(name: &str, result_id: &str, root: &std::path::Path) -> std::process::Output {
+    openterm_as(name)
+        .arg(result_id)
+        .env("OPENTERM_DATA_DIR", root)
+        .output()
+        .unwrap_or_else(|error| panic!("run {name}: {error}"))
 }
 
 #[cfg(unix)]
