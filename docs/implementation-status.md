@@ -15,7 +15,7 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 
 ### LLM advice foundation
 
-- `ai-ask` read-only command.
+- `ai-ask` read-only command with local LRU/TTL ask cache and OpenAI prompt-cache keys.
 - Codex CLI one-shot adapter using ephemeral read-only execution.
 - OpenAI Responses API adapter, with optional `base_url` / `OPENAI_BASE_URL`.
 - Claude Messages API adapter.
@@ -82,6 +82,7 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 - Font, size, background, foreground, accent, selection, opacity, blur, padding,
   balanced spacing, and titlebar controls with atomic config writes.
 - `ai-ui` and explicit `OpenTermUI` launch paths.
+- `ai-panel` runs in the current terminal so the shell keeps keyboard focus.
 - Accessory mascot splash with canonical 60 ms jump/wave frames.
 - Automatic zsh/Bash wrapper that preserves existing user startup files.
 - `ai-context` human, prompt, and JSON modes based on Git porcelain v2.

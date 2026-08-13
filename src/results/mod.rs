@@ -14,6 +14,7 @@ use std::ffi::OsString;
 use std::process::Output;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+pub(crate) use store_paths::{create_private_directory, data_root};
 pub use types::SaveRequest;
 pub(crate) use types::StoreStats;
 

@@ -209,13 +209,16 @@ mod tests {
     use super::{ProviderSettings, config_dir, load_from_base, save_to_base};
     use std::path::PathBuf;
 
-    fn temp_base() -> PathBuf {
-        std::env::temp_dir().join(format!("openterm-config-test-{}", std::process::id()))
+    fn temp_base(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "openterm-config-test-{name}-{}",
+            std::process::id()
+        ))
     }
 
     #[test]
     fn save_and_load_roundtrip() {
-        let base = temp_base();
+        let base = temp_base("roundtrip");
         let _ = std::fs::remove_dir_all(&base);
         let settings = ProviderSettings {
             default_provider: Some("openai".to_owned()),
@@ -254,7 +257,7 @@ mod tests {
 
     #[test]
     fn local_provider_roundtrip_has_no_api_key() {
-        let base = temp_base().join("local");
+        let base = temp_base("local");
         let _ = std::fs::remove_dir_all(&base);
         let mut settings = ProviderSettings::default();
         super::store_entry(

@@ -36,6 +36,8 @@ The app also bundles two OpenTerm-owned native surfaces:
 - an accessory mascot animation shown while the terminal starts;
 - `OpenTermUI`, a SwiftUI appearance editor with live preview and config reload.
 
+`ai-panel` is an in-terminal agent prompt, not a separate window.
+
 ## Runtime layout
 
 The native launcher prepends this directory to every terminal shell:

@@ -32,7 +32,7 @@ const AGENT: &[Entry] = &[
     },
     Entry {
         name: "ai-panel",
-        summary: "Open the native agent side panel (Ask, Workspace, Gain)",
+        summary: "Ask the agent in this terminal (no extra window)",
         usage: "ai-panel",
     },
     Entry {

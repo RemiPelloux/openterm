@@ -173,9 +173,12 @@ source /path/to/OpenTerm/shell/openterm.bash
 `ai-ask` and `ai-explain` are read-only advisers. Codex is the default provider
 and runs through `codex exec` with ephemeral, read-only settings.
 
-After `ai-connect`, stored provider and model defaults apply automatically:
+After `ai-connect`, stored provider and model defaults apply automatically.
+Identical `ai-ask` prompts reuse a local 24-hour LRU cache; OpenAI requests also
+send a stable prompt-cache key so the gateway can reuse prefixes.
 
 ```sh
+ai-panel
 ai-ask "what is using the most disk space here?"
 ai-ask --workspace "summarize this repo"
 ai-ask --provider openai --model gpt-4o-mini "explain df -h"

@@ -96,6 +96,27 @@ fn launcher_lists_new_rtk_commands() {
 }
 
 #[test]
+fn ai_panel_help_stays_in_terminal() {
+    let output = openterm_as("ai-panel")
+        .arg("--help")
+        .output()
+        .expect("run ai-panel --help");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(stdout.contains("inside this terminal"));
+}
+
+#[test]
+fn ai_panel_requires_a_tty() {
+    let output = openterm_as("ai-panel").output().expect("run ai-panel");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("interactive terminal"));
+}
+
+#[test]
 fn ai_ask_rejects_missing_question() {
     let output = openterm_as("ai-ask").output().expect("run ai-ask");
     let stderr = String::from_utf8_lossy(&output.stderr);

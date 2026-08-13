@@ -76,7 +76,9 @@ Do not add those fields until the interactive client consumes them.
   `https://api.openai.com`.
 - Authentication: bearer token from `OPENAI_API_KEY` or `providers.json`.
 - Model: required explicitly by `ai-ask`, or the model saved by `ai-connect`.
+- Stable `instructions` plus `prompt_cache_key` so gateways can reuse prefixes.
 - Response parser: concatenates text content from response output messages.
+- `usage` cached-token counts are reported on stderr when the gateway hits cache.
 
 ### Claude
 
