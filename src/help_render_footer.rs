@@ -31,7 +31,8 @@ pub fn render_footer(output: Output) -> String {
 fn markdown_footer() -> String {
     "\n## Notes\n\n\
         - Every user-facing tool starts with `ai-`.\n\
-        - `ai-ask`, `ai-chat`, and `ai-explain` are read-only — they never modify files.\n\
+        - `ai-ask` inspects local files and may apply edits through OpenCode.\n\
+        - `ai-chat` and `ai-explain` are read-only — they never modify files.\n\
         - Managed commands store evidence in `~/Library/Application Support/OpenTerm/data`.\n\
         - Run `ai-help --markdown | glow` for a rendered page if `glow` is installed.\n\
         - Run `ai-help COMMAND` for one entry.\n"
@@ -42,7 +43,8 @@ fn ansi_footer() -> String {
     let style = Style::new(Output::Ansi);
     format!(
         "{}\n  • Every user-facing tool starts with ai-.\n\
-           • ai-ask, ai-chat, and ai-explain are read-only — they never modify files.\n\
+           • ai-ask inspects local files and may apply edits through OpenCode.\n\
+           • ai-chat and ai-explain are read-only — they never modify files.\n\
            • Managed commands store evidence locally under Application Support/OpenTerm/data.\n\
            • Try {} for raw Markdown, or pipe it to glow.\n\
            • Use ai-help COMMAND for a single entry.\n",
@@ -53,7 +55,8 @@ fn ansi_footer() -> String {
 
 fn plain_footer() -> String {
     "\nNotes:\n  • Every user-facing tool starts with ai-.\n\
-        • ai-ask, ai-chat, and ai-explain are read-only — they never modify files.\n\
+        • ai-ask inspects local files and may apply edits through OpenCode.\n\
+        • ai-chat and ai-explain are read-only — they never modify files.\n\
         • Managed commands store evidence under Application Support/OpenTerm/data.\n\
         • ai-help --markdown emits Markdown; pipe to glow to render it.\n\
         • Use ai-help COMMAND for a single entry.\n"

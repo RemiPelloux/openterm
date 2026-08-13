@@ -177,6 +177,19 @@ fn ai_ask_rejects_missing_question() {
 }
 
 #[test]
+fn ai_ask_help_describes_markdown_and_opencode() {
+    let output = openterm_as("ai-ask")
+        .arg("--help")
+        .output()
+        .expect("run ai-ask --help");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(stdout.contains("markdown"));
+    assert!(stdout.contains("opencode --dangerously-skip-permissions"));
+}
+
+#[test]
 fn launcher_rejects_unprefixed_command() {
     let output = openterm_as("openterm")
         .arg("doctor")

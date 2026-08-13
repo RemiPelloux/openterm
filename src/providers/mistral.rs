@@ -6,7 +6,10 @@ const ENDPOINT: &str = "https://api.mistral.ai/v1/chat/completions";
 pub fn ask(request: &AskRequest) -> Result<String, String> {
     let body = json!({
         "model": model(request)?,
-        "messages": [{"role": "user", "content": request.prompt}],
+        "messages": [
+            {"role": "system", "content": super::ask_prompt::INSTRUCTIONS},
+            {"role": "user", "content": request.prompt},
+        ],
     });
     let mut response = http_agent()
         .post(ENDPOINT)

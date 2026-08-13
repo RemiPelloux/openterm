@@ -15,7 +15,8 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 
 ### LLM advice foundation
 
-- `ai-ask` read-only command with local LRU/TTL ask cache and OpenAI prompt-cache keys.
+- `ai-ask` attaches workspace and shell files, renders markdown, and applies
+  edits through OpenCode when the model returns an `opencode` prompt.
 - Codex CLI one-shot adapter using ephemeral read-only execution.
 - OpenAI Responses API adapter, with optional `base_url` / `OPENAI_BASE_URL`.
 - Claude Messages API adapter.

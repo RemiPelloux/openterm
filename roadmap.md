@@ -295,7 +295,7 @@ Status markers:
 
 | Command | Status | Contract |
 |---|---|---|
-| `ai-ask` | Now | read-only answer or executable suggestion |
+| `ai-ask` | Now | inspect local files, markdown answer, OpenCode apply |
 | `ai-explain` | Now | explain stored evidence or last result |
 | `ai-connect` | Now | configure providers; Codex auth stays in Codex CLI |
 | `ai-panel` | Now | open native agent panel |

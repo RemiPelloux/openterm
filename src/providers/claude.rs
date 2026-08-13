@@ -3,12 +3,13 @@ use serde_json::{Value, json};
 
 const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
 const API_VERSION: &str = "2023-06-01";
-const MAX_OUTPUT_TOKENS: u16 = 1_024;
+const MAX_OUTPUT_TOKENS: u16 = 4_096;
 
 pub fn ask(request: &AskRequest) -> Result<String, String> {
     let body = json!({
         "model": model(request)?,
         "max_tokens": MAX_OUTPUT_TOKENS,
+        "system": super::ask_prompt::INSTRUCTIONS,
         "messages": [{"role": "user", "content": request.prompt}],
     });
     let mut response = http_agent()

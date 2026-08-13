@@ -17,7 +17,7 @@ const AGENT: &[Entry] = &[
     },
     Entry {
         name: "ai-ask",
-        summary: "Ask an LLM for read-only terminal guidance",
+        summary: "Inspect files, answer in markdown, apply edits via OpenCode",
         usage: "ai-ask [--provider codex|openai|claude|mistral|ollama|lmstudio] [--model MODEL] [--workspace] [--result REF] QUESTION",
     },
     Entry {

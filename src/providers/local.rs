@@ -32,7 +32,10 @@ pub fn ask(provider: Provider, request: &AskRequest) -> Result<String, String> {
     let base = base_url(provider);
     let body = json!({
         "model": model(request)?,
-        "messages": [{"role": "user", "content": request.prompt}],
+        "messages": [
+            {"role": "system", "content": super::ask_prompt::INSTRUCTIONS},
+            {"role": "user", "content": request.prompt},
+        ],
         "stream": false,
     });
     let mut response = http_agent()

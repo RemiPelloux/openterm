@@ -1,5 +1,6 @@
 mod agent_context;
 mod ask;
+mod ask_apply;
 mod ask_cache;
 mod chat;
 mod cli;
@@ -12,6 +13,7 @@ mod help_catalog;
 mod help_render;
 mod help_render_footer;
 mod hud;
+mod markdown;
 mod panel_command;
 mod providers;
 mod results;

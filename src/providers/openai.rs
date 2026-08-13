@@ -1,9 +1,10 @@
 use super::{AskRequest, Provider, api_key, http_agent, http_error, model, non_empty, read_json};
 use serde_json::{Value, json};
 
+use super::ask_prompt::INSTRUCTIONS;
+
 const DEFAULT_BASE: &str = "https://api.openai.com";
-const CACHE_KEY: &str = "openterm-ask-v1";
-const INSTRUCTIONS: &str = "You are OpenTerm's read-only terminal advisor. Give concise, actionable guidance. Do not modify files or execute commands. Prefer exact commands the user can run.";
+const CACHE_KEY: &str = "openterm-ask-v2";
 
 pub fn ask(request: &AskRequest) -> Result<String, String> {
     let api_key = api_key("OPENAI_API_KEY")?;

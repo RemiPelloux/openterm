@@ -6,14 +6,13 @@ const HELP: &str =
 
 Providers: openai, claude, mistral, ollama, lmstudio, or codex (fallback)
 
-Modes:
-  --workspace   Include read-only cwd and Git context
-  --result REF  Include bounded preview of a stored result
+ai-ask inspects cwd, Git, and shell startup files, then answers in markdown.
+If the task needs edits, it writes an OpenCode prompt and applies it with:
+  opencode --dangerously-skip-permissions --print
 
-API providers require --model (or run ai-connect) and a configured API key.
-Local providers (ollama, lmstudio) require a running runtime and --model
-(or run ai-connect). They take no API key.
-ai-ask gives advice only; it does not modify files or execute proposed commands.
+Modes:
+  --workspace   Include cwd and Git context (on by default)
+  --result REF  Include bounded preview of a stored result
 ";
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
@@ -28,11 +27,23 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
     };
 
     match crate::ask_cache::complete(&request, || request.provider.ask(&request)) {
-        Ok(answer) => {
-            println!("{answer}");
-            0
-        }
+        Ok(answer) => present(&answer),
         Err(error) => print_error(&error, 1),
+    }
+}
+
+pub fn present(answer: &str) -> i32 {
+    let (visible, apply) = crate::markdown::split_opencode(answer);
+    print!("{}", crate::markdown::render(&visible));
+    if !visible.ends_with('\n') {
+        println!();
+    }
+    match apply {
+        Some(prompt) => match crate::ask_apply::run(&prompt) {
+            Ok(()) => 0,
+            Err(error) => print_error(&error, 1),
+        },
+        None => 0,
     }
 }
 
@@ -49,7 +60,7 @@ pub fn ask_text(question: &str, workspace: bool) -> Result<String, String> {
 fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, String> {
     let mut provider = crate::providers::config::default_provider();
     let mut model = None;
-    let mut workspace = false;
+    let mut workspace = true;
     let mut result = None;
     let mut prompt = Vec::new();
     let mut args = args.peekable();
@@ -106,11 +117,11 @@ fn attach_context(
     if workspace {
         parts.push(crate::agent_context::workspace_block());
     }
+    if let Some(shell) = crate::agent_context::shell_block() {
+        parts.push(shell);
+    }
     if let Some(id) = result {
         parts.push(crate::agent_context::result_block(&id)?);
-    }
-    if parts.is_empty() {
-        return Ok(question.to_owned());
     }
     parts.push(format!("Question:\n{question}"));
     Ok(parts.join("\n\n"))
@@ -162,6 +173,15 @@ mod tests {
         .expect("request");
         assert!(request.prompt.contains("OpenTerm workspace context"));
         assert!(request.prompt.contains("Question:"));
+    }
+
+    #[test]
+    fn default_ask_includes_workspace() {
+        let request = parse(["optimize my zsh"].map(str::to_owned).into_iter())
+            .expect("valid args")
+            .expect("request");
+        assert!(request.prompt.contains("OpenTerm workspace context"));
+        assert!(request.prompt.contains("Question:\noptimize my zsh"));
     }
 
     #[test]

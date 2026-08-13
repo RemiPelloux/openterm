@@ -122,21 +122,22 @@ private Codex backends, embed OAuth client constants, or store Codex tokens.
 
 ## Safety modes
 
-`ai-ask` is advice-only:
+`ai-ask` is a planner that inspects local context, then may apply edits:
 
-- direct API providers receive no tools or filesystem context;
-- Codex may inspect the working directory in a read-only sandbox;
-- requests to organize or modify files return a proposed plan;
-- generated commands are text, not automatically executed;
-- secrets are never included in prompts automatically.
+- workspace cwd/Git and redacted shell startup files are attached by default;
+- the model answers in markdown and must not ask the user to paste local files;
+- file writes are not done by the LLM API; they run through
+  `opencode --dangerously-skip-permissions --print` only when the answer contains
+  a fenced `opencode` prompt;
+- OpenCode apply is skipped when stdin is not a TTY;
+- answers that contain an apply prompt are not stored in the ask cache;
+- secrets matching key/password patterns are redacted before prompt attach.
 
-Future action commands must be separate:
+Future action commands remain:
 
 - `ai-plan`: inspect and propose a hash-bound plan;
 - `ai-apply`: apply an approved plan under capabilities;
 - `ai-verify`: verify the resulting state.
-
-Do not turn `ai-ask` into an implicit mutation path.
 
 ## Credential rules
 

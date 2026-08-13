@@ -170,7 +170,10 @@ source /path/to/OpenTerm/shell/openterm.bash
 
 ## LLM providers
 
-`ai-ask`, `ai-chat`, and `ai-explain` are read-only advisers. Codex is the default provider
+`ai-ask` inspects cwd, Git, and shell startup files, then answers in terminal
+markdown. When the model returns an `opencode` prompt, OpenTerm applies it with
+`opencode --dangerously-skip-permissions --print` and shows the diff.
+`ai-chat` and `ai-explain` remain read-only. Codex is the default provider
 and runs through `codex exec` with ephemeral, read-only settings.
 
 After `ai-connect`, stored provider and model defaults apply automatically.

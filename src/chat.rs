@@ -147,7 +147,12 @@ fn parse_line(line: &str) -> Option<Action> {
 fn ask_turn(question: &str) -> Result<(), String> {
     print_thinking();
     let answer = ask::ask_text(question, true)?;
-    print_bot(&answer);
+    print!("\r\x1b[K");
+    let color = color_enabled();
+    println!("  {}▐●‿●▌{}", paint(color, TEAL), paint(color, RESET));
+    if ask::present(&answer) != 0 {
+        return Err("ask failed".to_owned());
+    }
     Ok(())
 }
 
@@ -176,7 +181,7 @@ fn notes(status: &str, color: bool) -> [String; 7] {
             paint(color, RESET)
         ),
         format!("{}{status}{}", paint(color, CYAN), paint(color, RESET)),
-        tint(color, MUTED, "read-only · workspace on"),
+        tint(color, MUTED, "workspace on · OpenCode apply"),
         tint(color, MUTED, "q  ·  :clear  ·  :hud  ·  :help"),
         String::new(),
         String::new(),
@@ -213,20 +218,6 @@ fn box_foot(color: bool) -> String {
 fn print_thinking() {
     print!("{}\r", mascot_line(MUTED, "thinking…"));
     let _ = io::stdout().flush();
-}
-
-fn print_bot(answer: &str) {
-    let color = color_enabled();
-    let mut lines = answer.lines();
-    println!("{}", mascot_line(TEXT, lines.next().unwrap_or("")));
-    for line in lines {
-        println!(
-            "         {}{line}{}",
-            paint(color, TEXT),
-            paint(color, RESET)
-        );
-    }
-    println!();
 }
 
 fn paint_status() -> String {

@@ -1,10 +1,12 @@
 use super::AskRequest;
 use std::process::Command;
 
-const SAFETY_PROMPT: &str = "You are the read-only OpenTerm ai-ask assistant. Answer the user's terminal question concisely. You may inspect the current workspace, but do not modify files or execute commands with side effects. If asked to change or organize something, return a proposed plan and exact commands without applying them.";
-
 pub fn ask(request: &AskRequest) -> Result<String, String> {
-    let prompt = format!("{SAFETY_PROMPT}\n\nUser question: {}", request.prompt);
+    let prompt = format!(
+        "{}\n\nUser question: {}",
+        super::ask_prompt::INSTRUCTIONS,
+        request.prompt
+    );
     let mut command = Command::new("codex");
     command.args([
         "exec",

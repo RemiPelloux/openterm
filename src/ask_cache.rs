@@ -65,7 +65,7 @@ fn lookup_in(path: &Path, request: &AskRequest) -> Option<String> {
 }
 
 fn store_in(path: &Path, request: &AskRequest, answer: &str) {
-    if answer.trim().is_empty() {
+    if answer.trim().is_empty() || answer.contains("```opencode") {
         return;
     }
     let key = cache_key(request);
@@ -201,6 +201,19 @@ mod tests {
         assert_eq!(lookup_in(&path, &request("hi")), None);
         let loaded = load(&path);
         assert!(loaded.entries.is_empty());
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn opencode_answers_are_not_cached() {
+        let path = temp_path("opencode");
+        let _ = std::fs::remove_file(&path);
+        store_in(
+            &path,
+            &request("edit zsh"),
+            "Plan\n```opencode\nEdit ~/.zshrc\n```\n",
+        );
+        assert_eq!(lookup_in(&path, &request("edit zsh")), None);
         let _ = std::fs::remove_file(path);
     }
 }
