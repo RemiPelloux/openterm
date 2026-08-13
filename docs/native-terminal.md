@@ -37,6 +37,7 @@ The app also bundles two OpenTerm-owned native surfaces:
 - `OpenTermUI`, a SwiftUI settings window (appearance, AI provider, token status).
 
 `ai-panel` opens a non-activating agent side panel so the shell keeps focus.
+`ai-chat` opens an in-terminal mascot chat that keeps the same OpenTerm palette.
 
 ## Runtime layout
 

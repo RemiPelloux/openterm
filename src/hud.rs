@@ -48,6 +48,10 @@ pub fn sync_from_config() {
     save(&hud);
 }
 
+pub fn current_line() -> String {
+    format_line(&load())
+}
+
 pub fn format_line(hud: &Hud) -> String {
     if hud.provider.is_empty() {
         return "ai · not connected".to_owned();

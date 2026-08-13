@@ -125,7 +125,7 @@ Run `ai-help` for the full catalog (supports `--markdown` and `--plain`).
 
 | Area | Commands |
 |---|---|
-| Agent | `ai-ask`, `ai-connect`, `ai-explain`, `ai-panel`, `ai-workspace` |
+| Agent | `ai-ask`, `ai-chat`, `ai-connect`, `ai-explain`, `ai-panel`, `ai-workspace` |
 | System | `ai-doctor`, `ai-context`, `ai-ui`, `ai-version`, `ai-help` |
 | Search & inspect | `ai-rg`, `ai-read`, `ai-ls`, `ai-json`, `ai-tree`, `ai-find`, `ai-grep`, … |
 | Development | `ai-test`, `ai-lint`, `ai-cargo`, `ai-pytest`, `ai-tsc`, `ai-go`, `ai-gradle`, … |
@@ -170,7 +170,7 @@ source /path/to/OpenTerm/shell/openterm.bash
 
 ## LLM providers
 
-`ai-ask` and `ai-explain` are read-only advisers. Codex is the default provider
+`ai-ask`, `ai-chat`, and `ai-explain` are read-only advisers. Codex is the default provider
 and runs through `codex exec` with ephemeral, read-only settings.
 
 After `ai-connect`, stored provider and model defaults apply automatically.
@@ -178,6 +178,7 @@ Identical `ai-ask` prompts reuse a local 24-hour LRU cache; OpenAI requests also
 send a stable prompt-cache key so the gateway can reuse prefixes.
 
 ```sh
+ai-chat
 ai-panel
 openterm settings
 ai-ask "what is using the most disk space here?"

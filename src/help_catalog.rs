@@ -21,6 +21,11 @@ const AGENT: &[Entry] = &[
         usage: "ai-ask [--provider codex|openai|claude|mistral|ollama|lmstudio] [--model MODEL] [--workspace] [--result REF] QUESTION",
     },
     Entry {
+        name: "ai-chat",
+        summary: "Chat in-terminal with the OpenTerm mascot",
+        usage: "ai-chat",
+    },
+    Entry {
         name: "ai-connect",
         summary: "Connect to a provider (arrow keys) and pick a model",
         usage: "ai-connect [--status]",

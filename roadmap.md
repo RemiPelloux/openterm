@@ -82,12 +82,12 @@ multicall tool binary.
 
 ### 2.2 Shipped command inventory
 
-The registry contains 61 public commands: 22 OpenTerm-native commands and 39
+The registry contains 63 public commands: 24 OpenTerm-native commands and 39
 RTK-backed commands.
 
 | Area | Shipped commands |
 |---|---|
-| Guidance | `ai-help`, `ai-ask`, `ai-explain`, `ai-panel`, `ai-workspace` |
+| Guidance | `ai-help`, `ai-ask`, `ai-chat`, `ai-explain`, `ai-panel`, `ai-workspace` |
 | Providers | `ai-connect` |
 | Product | `ai-doctor`, `ai-version`, `ai-context`, `ai-ui` |
 | Evidence | `ai-run`, `ai-result`, `ai-expand`, `ai-page`, `ai-export`, `ai-pin`, `ai-forget` |
@@ -299,6 +299,7 @@ Status markers:
 | `ai-explain` | Now | explain stored evidence or last result |
 | `ai-connect` | Now | configure providers; Codex auth stays in Codex CLI |
 | `ai-panel` | Now | open native agent panel |
+| `ai-chat` | Now | in-terminal mascot chat; read-only workspace context |
 | `ai-plan` | 1.0 | produce typed, hash-bound effect plan |
 | `ai-apply` | 1.0 | apply one approved plan reference |
 | `ai-verify` | 1.0 | verify plan postconditions |

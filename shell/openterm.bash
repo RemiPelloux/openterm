@@ -55,6 +55,6 @@ _openterm_bash_preexec() {
 if [ -z "${OPENTERM_WELCOMED:-}" ]; then
   export OPENTERM_WELCOMED=1
   printf '\n\033[48;5;236m\033[38;5;238m ╭─\033[0m \033[38;5;81m▐●‿●▌\033[0m  \033[1m\033[38;5;255mOpenTerm\033[0m  \033[38;5;45magent-first\033[0m \033[38;5;238m──────────────────\033[0m\n'
-  printf '\033[48;5;236m\033[38;5;238m │\033[0m  \033[38;5;250mai-rg · ai-read · ai-panel · ai-ask --workspace\033[0m              \033[38;5;238m│\033[0m\n'
+  printf '\033[48;5;236m\033[38;5;238m │\033[0m  \033[38;5;250mai-chat · ai-panel · ai-ask --workspace\033[0m                     \033[38;5;238m│\033[0m\n'
   printf '\033[48;5;236m\033[38;5;238m ╰──────────────────────────────────────────────────────────────\033[0m\033[0m\n\n'
 fi

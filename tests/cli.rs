@@ -89,10 +89,48 @@ fn launcher_lists_new_rtk_commands() {
 
     assert!(stdout.contains("ai-rg"));
     assert!(stdout.contains("ai-panel"));
+    assert!(stdout.contains("ai-chat"));
     assert!(stdout.contains("ai-workspace"));
     assert!(stdout.contains("ai-json"));
     assert!(stdout.contains("ai-pytest"));
     assert!(stdout.contains("ai-cargo"));
+}
+
+#[test]
+fn ai_chat_help_describes_mascot_session() {
+    let output = openterm_as("ai-chat")
+        .arg("--help")
+        .output()
+        .expect("run ai-chat --help");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(output.status.success());
+    assert!(stdout.contains("mascot"));
+    assert!(stdout.contains(":clear"));
+}
+
+#[test]
+fn ai_chat_rejects_positional_args() {
+    let output = openterm_as("ai-chat")
+        .arg("hello")
+        .output()
+        .expect("run ai-chat hello");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("no arguments"));
+}
+
+#[test]
+fn ai_chat_requires_interactive_terminal() {
+    let output = openterm_as("ai-chat")
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("run ai-chat");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr.contains("interactive terminal"));
 }
 
 #[test]

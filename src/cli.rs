@@ -1,9 +1,10 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-const CORE_COMMANDS: [&str; 23] = [
+const CORE_COMMANDS: [&str; 24] = [
     "ai-help",
     "ai-ask",
+    "ai-chat",
     "ai-explain",
     "ai-panel",
     "ai-workspace",
@@ -35,6 +36,7 @@ pub fn run(program: &OsStr, args: impl IntoIterator<Item = OsString>) -> i32 {
     match command.as_str() {
         "ai-help" => crate::help::run(args),
         "ai-ask" => crate::ask::run(args),
+        "ai-chat" => crate::chat::run(args),
         "ai-explain" => crate::explain::run(args),
         "ai-panel" => crate::panel_command::run(args),
         "ai-workspace" => crate::workspace::run(args),
@@ -57,6 +59,7 @@ fn run_launcher(args: impl IntoIterator<Item = OsString>) -> i32 {
         None => crate::ui::show_cockpit(),
         Some(value) if matches!(value.to_str(), Some("help" | "--help" | "-h")) => print_help(),
         Some(value) if value == "mascot" => crate::ui::animate_mascot(),
+        Some(value) if value == "chat" => crate::chat::run(std::iter::empty::<OsString>()),
         Some(value) if value == "settings" => {
             crate::ui_command::run_settings(std::iter::empty::<OsString>())
         }

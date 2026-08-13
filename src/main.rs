@@ -1,6 +1,7 @@
 mod agent_context;
 mod ask;
 mod ask_cache;
+mod chat;
 mod cli;
 mod connect;
 mod doctor;

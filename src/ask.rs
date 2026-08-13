@@ -36,6 +36,16 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
     }
 }
 
+pub fn ask_text(question: &str, workspace: bool) -> Result<String, String> {
+    let mut args = Vec::new();
+    if workspace {
+        args.push("--workspace".to_owned());
+    }
+    args.push(question.to_owned());
+    let request = parse(args.into_iter())?.ok_or_else(|| "a question is required".to_owned())?;
+    crate::ask_cache::complete(&request, || request.provider.ask(&request))
+}
+
 fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, String> {
     let mut provider = crate::providers::config::default_provider();
     let mut model = None;

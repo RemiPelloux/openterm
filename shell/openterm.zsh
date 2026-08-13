@@ -100,7 +100,7 @@ if [ -z "${OPENTERM_WELCOMED:-}" ]; then
   export OPENTERM_WELCOMED=1
   print -P ""
   print -P "%F{236}╭─%f %F{81}▐●‿●▌%f  %B%F{255}OpenTerm%f%b  %F{45}agent-first%f %F{236}──────────────────%f"
-  print -P "%F{236}│%f  %F{250}ai-rg · ai-read · ai-panel · ai-ask --workspace%f              %F{236}│%f"
+  print -P "%F{236}│%f  %F{250}ai-chat · ai-panel · ai-ask --workspace%f                     %F{236}│%f"
   print -P "%F{236}╰──────────────────────────────────────────────────────────────╯%f"
   print -P ""
 fi

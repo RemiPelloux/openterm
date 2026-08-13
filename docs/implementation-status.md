@@ -83,6 +83,7 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
   balanced spacing, and titlebar controls with atomic config writes.
 - `ai-ui` and explicit `OpenTermUI` launch paths.
 - `ai-panel` opens a non-activating agent side panel so the shell keeps focus.
+- `ai-chat` / `openterm chat` is an in-terminal mascot chat with workspace context.
 - Prompt top bar shows path, provider, token totals, cache hits, and AI liveness.
 - `ai-settings` / `openterm settings` open appearance, AI, and token settings.
 - Accessory mascot splash with canonical 60 ms jump/wave frames.

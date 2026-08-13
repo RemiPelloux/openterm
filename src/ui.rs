@@ -65,6 +65,10 @@ pub fn animate_mascot() -> i32 {
     0
 }
 
+pub(crate) fn mascot_art() -> &'static [&'static str; 7] {
+    &DEFAULT_ART
+}
+
 fn cockpit(color: bool, stats: &StoreStats) -> String {
     let accent = ansi(color, "\x1b[38;5;81m");
     let glow = ansi(color, "\x1b[38;5;45m");
@@ -72,7 +76,7 @@ fn cockpit(color: bool, stats: &StoreStats) -> String {
     let muted = ansi(color, "\x1b[38;5;238m");
     let reset = ansi(color, "\x1b[0m");
     format!(
-        "\n{accent}{}{reset}\n\n{strong}{glow}OpenTerm{reset} {muted}agent-first · token-aware · local-first{reset}\n\n  {strong}{:<5}{reset} results   {strong}{:<5}{reset} pinned   {strong}{:<9}{reset} evidence\n\n{accent}Agent{reset}\n  ai-panel                     agent side panel (keeps shell focus)\n  ai-ask --workspace \"…\"       cwd + Git aware guidance\n  ai-explain --last            explain latest output\n  ai-workspace                 print agent context pack\n  ai-settings                  appearance, AI, token status\n\n{accent}Search{reset}\n  ai-rg PATTERN                fast ripgrep (prefer over ai-grep)\n  ai-read · ai-ls · ai-json    compact inspection\n  ai-gain                      RTK token savings\n\n{accent}Recall{reset}\n  ai-history · ai-search-history · ai-clean-history\n\n{muted}openterm help · openterm settings · ai-connect · ai-doctor{reset}\n\n",
+        "\n{accent}{}{reset}\n\n{strong}{glow}OpenTerm{reset} {muted}agent-first · token-aware · local-first{reset}\n\n  {strong}{:<5}{reset} results   {strong}{:<5}{reset} pinned   {strong}{:<9}{reset} evidence\n\n{accent}Agent{reset}\n  ai-chat                      in-terminal chat with the mascot\n  ai-panel                     agent side panel (keeps shell focus)\n  ai-ask --workspace \"…\"       cwd + Git aware guidance\n  ai-explain --last            explain latest output\n  ai-workspace                 print agent context pack\n  ai-settings                  appearance, AI, token status\n\n{accent}Search{reset}\n  ai-rg PATTERN                fast ripgrep (prefer over ai-grep)\n  ai-read · ai-ls · ai-json    compact inspection\n  ai-gain                      RTK token savings\n\n{accent}Recall{reset}\n  ai-history · ai-search-history · ai-clean-history\n\n{muted}openterm help · openterm settings · ai-connect · ai-doctor{reset}\n\n",
         DEFAULT_ART.join("\n"),
         stats.active_results,
         stats.pinned_results,
@@ -134,6 +138,7 @@ mod tests {
     fn cockpit_is_accessible_without_color() {
         let rendered = cockpit(false, &StoreStats::default());
         assert!(rendered.contains("OpenTerm"));
+        assert!(rendered.contains("ai-chat"));
         assert!(rendered.contains("ai-panel"));
         assert!(!rendered.contains("ai-history") || rendered.contains("ai-search-history"));
         assert!(!rendered.contains("\x1b["));
