@@ -53,14 +53,17 @@ Inside OpenTerm, run the interactive setup wizard:
 ai-connect
 ```
 
-Use arrow keys to pick a provider (Codex, OpenAI, Claude, Mistral). Direct API
-providers then discover models and save the selected default. Their keys are
-currently stored in `~/.config/openterm/providers.json` (mode `600`), with
-environment variables taking precedence.
+Use arrow keys to pick a provider (Codex, OpenAI, Claude, Mistral, Ollama,
+LM Studio). Direct API providers then discover models and save the selected
+default. Their keys are currently stored in `~/.config/openterm/providers.json`
+(mode `600`), with environment variables taking precedence.
 
 - **Codex** — delegates authentication to the installed Codex CLI and never
   copies its OAuth tokens; run `codex login` first
 - **API providers** — prompt for an API key, then fetch live model lists
+- **Ollama / LM Studio** — no API key; start the local runtime, then pick a
+  model it has already pulled. Override the host with `OLLAMA_HOST` or
+  `LMSTUDIO_HOST` if it is not on the default port.
 
 Check status without exposing secrets:
 
@@ -174,6 +177,7 @@ After `ai-connect`, stored provider and model defaults apply automatically:
 ai-ask "what is using the most disk space here?"
 ai-ask --workspace "summarize this repo"
 ai-ask --provider openai --model gpt-4o-mini "explain df -h"
+ai-ask --provider ollama --model llama3.2 "explain df -h"
 ```
 
 | Provider | Credential |
@@ -182,6 +186,8 @@ ai-ask --provider openai --model gpt-4o-mini "explain df -h"
 | OpenAI Responses API | `ai-connect` or `OPENAI_API_KEY` |
 | Claude Messages API | `ai-connect` or `ANTHROPIC_API_KEY` |
 | Mistral Chat Completions | `ai-connect` or `MISTRAL_API_KEY` |
+| Ollama | Running local runtime (`OLLAMA_HOST`, default `http://127.0.0.1:11434`) |
+| LM Studio | Running local runtime (`LMSTUDIO_HOST`, default `http://127.0.0.1:1234`) |
 
 `ai-doctor` reports configured / not configured only — never prints secrets.
 Direct-provider keys move to Keychain and Secret Service before the next

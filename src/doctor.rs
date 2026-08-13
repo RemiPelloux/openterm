@@ -27,6 +27,7 @@ pub fn run() -> i32 {
     }
 
     print_credentials();
+    print_local_runtimes();
     if let Ok(path) = config::config_path() {
         if path.exists() {
             println!("  cfg providers: {}", path.display());
@@ -39,6 +40,22 @@ fn print_credentials() {
     for (provider, variable) in API_PROVIDERS {
         let state = credential_state(provider, variable);
         println!("  api {provider}: {state} ({variable})");
+    }
+}
+
+fn print_local_runtimes() {
+    for provider in [
+        crate::providers::Provider::Ollama,
+        crate::providers::Provider::LmStudio,
+    ] {
+        let host = crate::providers::local_base_url(provider);
+        let models = crate::providers::local_models(provider);
+        let state = if models.is_empty() {
+            "not running".to_owned()
+        } else {
+            format!("reachable, {} model(s)", models.len())
+        };
+        println!("  loc {provider}: {state} ({host})");
     }
 }
 

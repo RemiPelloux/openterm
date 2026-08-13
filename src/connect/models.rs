@@ -6,8 +6,13 @@ pub fn list_for_provider(provider: Provider, api_key: &str) -> Vec<String> {
         Provider::OpenAi => fetch_openai(api_key),
         Provider::Claude => fetch_claude(api_key),
         Provider::Mistral => fetch_mistral(api_key),
+        Provider::Ollama | Provider::LmStudio => crate::providers::local_models(provider),
         Provider::Codex => Vec::new(),
     };
+    if provider.is_local() {
+        // Only the models actually pulled locally can answer, so never guess.
+        return models;
+    }
     if models.is_empty() {
         fallback_for(provider)
     } else {
@@ -96,7 +101,7 @@ fn fallback_for(provider: Provider) -> Vec<String> {
             "mistral-small-latest".into(),
             "codestral-latest".into(),
         ],
-        Provider::Codex => Vec::new(),
+        Provider::Codex | Provider::Ollama | Provider::LmStudio => Vec::new(),
     }
 }
 

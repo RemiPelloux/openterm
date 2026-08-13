@@ -9,7 +9,9 @@ The initial provider set is:
 - OpenAI through the Responses API;
 - Claude through the Anthropic Messages API;
 - Mistral through Chat Completions;
-- Codex through the locally installed Codex CLI.
+- Codex through the locally installed Codex CLI;
+- Ollama through the local OpenAI-compatible Chat Completions API;
+- LM Studio through the local OpenAI-compatible Chat Completions API.
 
 ## OpenAgents findings
 
@@ -87,6 +89,15 @@ Do not add those fields until the interactive client consumes them.
 - Endpoint: `POST https://api.mistral.ai/v1/chat/completions`.
 - Authentication: bearer token from `MISTRAL_API_KEY`.
 - Model: required explicitly by `ai-ask`.
+- Response parser: reads the first assistant message.
+
+### Ollama and LM Studio
+
+- Endpoint: `POST {host}/v1/chat/completions`.
+- Authentication: none.
+- Default hosts: Ollama `http://127.0.0.1:11434`, LM Studio `http://127.0.0.1:1234`.
+- Override with `OLLAMA_HOST` or `LMSTUDIO_HOST` (scheme optional).
+- Model: required; `ai-connect` lists only models the runtime currently exposes.
 - Response parser: reads the first assistant message.
 
 ### Codex CLI

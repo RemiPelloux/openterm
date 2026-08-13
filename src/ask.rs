@@ -4,13 +4,15 @@ use std::ffi::OsString;
 const HELP: &str =
     "Usage: ai-ask [--provider PROVIDER] [--model MODEL] [--workspace] [--result REF] <QUESTION>
 
-Providers: codex (default), openai, claude, mistral
+Providers: codex (default), openai, claude, mistral, ollama, lmstudio
 
 Modes:
   --workspace   Include read-only cwd and Git context
   --result REF  Include bounded preview of a stored result
 
 API providers require --model (or run ai-connect) and a configured API key.
+Local providers (ollama, lmstudio) require a running runtime and --model
+(or run ai-connect). They take no API key.
 ai-ask gives advice only; it does not modify files or execute proposed commands.
 ";
 
@@ -175,5 +177,18 @@ mod tests {
                 .into_iter(),
         );
         assert_eq!(result.unwrap_err(), "unknown provider 'other'");
+    }
+
+    #[test]
+    fn local_provider_accepts_explicit_model() {
+        let request = parse(
+            ["--provider", "ollama", "--model", "llama3.2", "hello"]
+                .map(str::to_owned)
+                .into_iter(),
+        )
+        .expect("valid args")
+        .expect("request");
+        assert_eq!(request.provider, Provider::Ollama);
+        assert_eq!(request.model.as_deref(), Some("llama3.2"));
     }
 }

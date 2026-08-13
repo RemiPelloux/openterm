@@ -20,10 +20,16 @@ pub struct ProviderSettings {
     pub claude: Option<ProviderEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mistral: Option<ProviderEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ollama: Option<ProviderEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lmstudio: Option<ProviderEntry>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProviderEntry {
+    /// Empty for locally hosted runtimes, which take no credential.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub api_key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
@@ -85,7 +91,15 @@ pub fn is_stored(provider: Provider) -> bool {
     if provider == Provider::Codex {
         return false;
     }
-    entry(provider, &load()).is_some_and(|entry| !entry.api_key.is_empty())
+    let settings = load();
+    let Some(entry) = entry(provider, &settings) else {
+        return false;
+    };
+    // A local runtime is connected once a model is chosen; there is no key.
+    if provider.is_local() {
+        return entry.model.is_some();
+    }
+    !entry.api_key.is_empty()
 }
 
 pub fn env_var(provider: Provider) -> Option<&'static str> {
@@ -93,7 +107,19 @@ pub fn env_var(provider: Provider) -> Option<&'static str> {
         Provider::OpenAi => Some("OPENAI_API_KEY"),
         Provider::Claude => Some("ANTHROPIC_API_KEY"),
         Provider::Mistral => Some("MISTRAL_API_KEY"),
-        Provider::Codex => None,
+        Provider::Codex | Provider::Ollama | Provider::LmStudio => None,
+    }
+}
+
+/// Records a connected provider so `ai-ask` can resolve its model later.
+pub fn store_entry(settings: &mut ProviderSettings, provider: Provider, entry: ProviderEntry) {
+    match provider {
+        Provider::OpenAi => settings.openai = Some(entry),
+        Provider::Claude => settings.claude = Some(entry),
+        Provider::Mistral => settings.mistral = Some(entry),
+        Provider::Ollama => settings.ollama = Some(entry),
+        Provider::LmStudio => settings.lmstudio = Some(entry),
+        Provider::Codex => {}
     }
 }
 
@@ -110,7 +136,7 @@ pub fn resolve_api_key(provider: Provider) -> Result<String, String> {
         }
         return Ok(entry.api_key.clone());
     }
-    Err("codex does not use an API key; run codex login".to_owned())
+    Err(format!("{provider} does not use an API key"))
 }
 
 fn entry(provider: Provider, settings: &ProviderSettings) -> Option<&ProviderEntry> {
@@ -118,6 +144,8 @@ fn entry(provider: Provider, settings: &ProviderSettings) -> Option<&ProviderEnt
         Provider::OpenAi => settings.openai.as_ref(),
         Provider::Claude => settings.claude.as_ref(),
         Provider::Mistral => settings.mistral.as_ref(),
+        Provider::Ollama => settings.ollama.as_ref(),
+        Provider::LmStudio => settings.lmstudio.as_ref(),
         Provider::Codex => None,
     }
 }
@@ -205,5 +233,31 @@ mod tests {
     fn config_dir_uses_home_when_unset() {
         let dir = config_dir().expect("dir");
         assert!(dir.ends_with(".config/openterm") || dir.ends_with("openterm"));
+    }
+
+    #[test]
+    fn local_provider_roundtrip_has_no_api_key() {
+        let base = temp_base().join("local");
+        let _ = std::fs::remove_dir_all(&base);
+        let mut settings = ProviderSettings::default();
+        super::store_entry(
+            &mut settings,
+            crate::providers::Provider::Ollama,
+            super::ProviderEntry {
+                api_key: String::new(),
+                model: Some("llama3.2".to_owned()),
+            },
+        );
+        save_to_base(&base, &settings).expect("save");
+        let loaded = load_from_base(&base);
+        let model = loaded
+            .ollama
+            .as_ref()
+            .and_then(|entry| entry.model.as_deref());
+        assert_eq!(model, Some("llama3.2"));
+        assert!(loaded.ollama.is_some_and(|entry| entry.api_key.is_empty()));
+        let text = std::fs::read_to_string(base.join(super::FILE_NAME)).expect("read");
+        assert!(!text.contains("api_key"));
+        let _ = std::fs::remove_dir_all(base);
     }
 }

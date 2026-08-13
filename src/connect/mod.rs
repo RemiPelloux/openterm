@@ -14,6 +14,7 @@ Interactive provider setup for OpenTerm.
 Use arrow keys to pick a provider, then a model (sorted newest first).
 API keys are stored in ~/.config/openterm/providers.json (mode 600).
 Codex authentication is delegated to the installed Codex CLI.
+Ollama and LM Studio need no key; start the runtime, then pick a pulled model.
 ";
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
@@ -69,7 +70,9 @@ fn run_wizard() -> Result<(), String> {
     let provider = menu::select_provider()?;
     let model = match provider {
         Provider::Codex => connect_codex()?,
-        other => connect_api_provider(other)?,
+        other if other.is_local() => connect_local_provider(other)?,
+        other if other.uses_api_key() => connect_api_provider(other)?,
+        other => return Err(format!("provider '{other}' cannot be connected this way")),
     };
     println!("\nConnected to {provider} · {model}");
     if let Ok(path) = config::config_path() {
@@ -91,18 +94,38 @@ fn connect_codex() -> Result<String, String> {
 fn connect_api_provider(provider: Provider) -> Result<String, String> {
     let api_key = menu::read_api_key(provider)?;
     let choices = models::list_for_provider(provider, &api_key);
-    let model = menu::select_model(&choices, "Select model")?;
-    let mut settings = config::load();
-    let entry = ProviderEntry {
+    persist_model(
+        provider,
         api_key,
-        model: Some(model.clone()),
-    };
-    match provider {
-        Provider::OpenAi => settings.openai = Some(entry),
-        Provider::Claude => settings.claude = Some(entry),
-        Provider::Mistral => settings.mistral = Some(entry),
-        Provider::Codex => {}
+        menu::select_model(&choices, "Select model")?,
+    )
+}
+
+fn connect_local_provider(provider: Provider) -> Result<String, String> {
+    let choices = models::list_for_provider(provider, "");
+    if choices.is_empty() {
+        return Err(format!(
+            "{provider} is not reachable at {}; start it, pull a model, then retry",
+            crate::providers::local_base_url(provider)
+        ));
     }
+    persist_model(
+        provider,
+        String::new(),
+        menu::select_model(&choices, "Select model")?,
+    )
+}
+
+fn persist_model(provider: Provider, api_key: String, model: String) -> Result<String, String> {
+    let mut settings = config::load();
+    config::store_entry(
+        &mut settings,
+        provider,
+        ProviderEntry {
+            api_key,
+            model: Some(model.clone()),
+        },
+    );
     settings.default_provider = Some(provider.to_string());
     config::save(&settings)?;
     Ok(model)
@@ -110,13 +133,8 @@ fn connect_api_provider(provider: Provider) -> Result<String, String> {
 
 fn print_status() -> i32 {
     println!("OpenTerm provider status\n");
-    for provider in [
-        Provider::Codex,
-        Provider::OpenAi,
-        Provider::Claude,
-        Provider::Mistral,
-    ] {
-        println!("  {provider:<8} {}", describe(provider));
+    for provider in Provider::ALL {
+        println!("  {provider:<10} {}", describe(provider));
     }
     if let Ok(path) = config::config_path() {
         println!("\nConfig: {}", path.display());
@@ -135,9 +153,28 @@ fn describe(provider: Provider) -> String {
         }
         return "not connected — run codex login".to_owned();
     }
-    let env = config::env_var(provider).expect("api provider");
-    if std::env::var_os(env).is_some() {
-        return "configured (environment)".to_owned();
+    if provider.is_local() {
+        return describe_local(provider);
+    }
+    describe_api(provider)
+}
+
+fn describe_local(provider: Provider) -> String {
+    let host = crate::providers::local_base_url(provider);
+    if config::is_stored(provider) {
+        let model = config::stored_model(provider)
+            .map(|value| format!(", model {value}"))
+            .unwrap_or_default();
+        return format!("connected (local at {host}{model})");
+    }
+    format!("not connected — start {provider} at {host}, then run ai-connect")
+}
+
+fn describe_api(provider: Provider) -> String {
+    if let Some(env) = config::env_var(provider) {
+        if std::env::var_os(env).is_some() {
+            return "configured (environment)".to_owned();
+        }
     }
     if config::is_stored(provider) {
         let model = config::stored_model(provider)

@@ -7,7 +7,7 @@ const HELP: &str =
 Explain stored command output or the latest result using your selected model.
 Read-only — does not modify files or execute commands.
 
-Providers: codex (default), openai, claude, mistral
+Providers: codex (default), openai, claude, mistral, ollama, lmstudio
 ";
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {

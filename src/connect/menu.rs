@@ -1,15 +1,8 @@
 use crate::providers::Provider;
 use dialoguer::{Select, theme::ColorfulTheme};
 
-const PROVIDERS: [Provider; 4] = [
-    Provider::Codex,
-    Provider::OpenAi,
-    Provider::Claude,
-    Provider::Mistral,
-];
-
 pub fn select_provider() -> Result<Provider, String> {
-    let labels: Vec<String> = PROVIDERS
+    let labels: Vec<String> = Provider::ALL
         .iter()
         .map(|provider| format!("{provider} — {}", label(*provider)))
         .collect();
@@ -19,7 +12,7 @@ pub fn select_provider() -> Result<Provider, String> {
         .default(0)
         .interact()
         .map_err(|error| error.to_string())?;
-    Ok(PROVIDERS[index])
+    Ok(Provider::ALL[index])
 }
 
 pub fn select_model(models: &[String], prompt: &str) -> Result<String, String> {
@@ -49,5 +42,7 @@ fn label(provider: Provider) -> &'static str {
         Provider::OpenAi => "OpenAI API key",
         Provider::Claude => "Anthropic API key",
         Provider::Mistral => "Mistral API key",
+        Provider::Ollama => "Ollama (local, no API key)",
+        Provider::LmStudio => "LM Studio (local, no API key)",
     }
 }
