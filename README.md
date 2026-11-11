@@ -18,7 +18,7 @@ and lets you use any LLM, including the Claude or ChatGPT plan you already pay f
 <img src="docs/assets/providers.svg" width="880" alt="Supported providers: Claude Pro/Max and ChatGPT subscriptions, OpenAI, Anthropic, Mistral, Gemini, Groq, OpenRouter, DeepSeek, xAI, Together, Ollama, LM Studio, and any OpenAI-compatible URL.">
 
 [**Docs**](https://remipelloux.github.io/openterm/docs.html) ·
-[**Download**](https://github.com/RemiPelloux/openterm/releases/latest) ·
+[**Download**](https://github.com/RemiPelloux/openterm/releases/tag/v0.1.0) ·
 [**Roadmap**](roadmap.md)
 
 </div>
@@ -44,7 +44,7 @@ and lets you use any LLM, including the Claude or ChatGPT plan you already pay f
 
 ```sh
 curl -L -o openterm.tar.gz \
-  https://github.com/RemiPelloux/openterm/releases/latest/download/openterm-macos-arm64.tar.gz
+  https://github.com/RemiPelloux/openterm/releases/download/v0.1.0/openterm-macos-arm64.tar.gz
 tar xzf openterm.tar.gz && cd openterm
 ./install.sh          # links openterm + every ai-* command into ~/.local/bin
 ai-doctor

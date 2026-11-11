@@ -2,6 +2,7 @@
 //! per provider under a single service. Unit tests and `OPENTERM_KEYCHAIN=off`
 //! never touch the login keychain; other platforms have no keychain backend.
 
+#[cfg(target_os = "macos")]
 pub const SERVICE: &str = "ai.openterm.providers";
 const SWITCH_ENV: &str = "OPENTERM_KEYCHAIN";
 const SWITCH_OFF: &str = "off";
