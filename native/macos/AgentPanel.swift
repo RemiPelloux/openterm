@@ -5,8 +5,11 @@ import SwiftUI
 struct AgentPanelView: View {
     @State private var question = ""
     @State private var answer = "Ask about your session, errors, or next command."
-    @State private var busy = false
-    @State private var hud = "ai · not connected"
+    @State private var raw = ""
+    @State private var stream: ToolStream?
+    @StateObject private var hud = HudMonitor()
+
+    private var busy: Bool { stream != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -18,7 +21,7 @@ struct AgentPanelView: View {
                 }
                 Spacer()
             }
-            Text(hud)
+            Text(hud.line)
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.cyan)
                 .padding(8)
@@ -27,13 +30,7 @@ struct AgentPanelView: View {
             TextField("Ask OpenTerm…", text: $question)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit { ask() }
-            HStack {
-                Button("Ask") { ask() }.buttonStyle(.borderedProminent).tint(.cyan)
-                Button("Workspace") { runTool(["ai-workspace"]) }
-                Button("Gain") { runTool(["ai-gain"]) }
-                Spacer()
-                if busy { ProgressView().controlSize(.small) }
-            }
+            controls
             ScrollView {
                 Text(answer).font(.system(.body, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -46,92 +43,90 @@ struct AgentPanelView: View {
         .frame(minWidth: 360, minHeight: 420)
         .background(LinearGradient(colors: [.black.opacity(0.92), .cyan.opacity(0.08)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing))
-        .onAppear { refreshHud() }
-        .onReceive(Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()) { _ in
-            refreshHud()
+        .onAppear { hud.start() }
+        .onDisappear { hud.stop(); stop() }
+    }
+
+    private var controls: some View {
+        HStack {
+            Button("Ask") { ask() }.buttonStyle(.borderedProminent).tint(.cyan).disabled(busy)
+            Button("Workspace") { runTool(["ai-workspace"]) }.disabled(busy)
+            Button("Gain") { runTool(["ai-gain"]) }.disabled(busy)
+            Spacer()
+            if busy {
+                ProgressView().controlSize(.small)
+                Button("Stop") { stop() }
+            }
         }
     }
 
     private func ask() {
         let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty, !busy else { return }
         runTool(["ai-ask", "--workspace", trimmed])
     }
 
     private func runTool(_ args: [String]) {
-        guard let command = args.first, let binary = toolBinary(named: command) else {
-            answer = "OpenTerm tools not found. Launch from OpenTerm.app."
-            return
-        }
-        busy = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let task = Process()
-            task.executableURL = URL(fileURLWithPath: binary)
-            task.arguments = Array(args.dropFirst())
-            let pipe = Pipe()
-            task.standardOutput = pipe
-            task.standardError = pipe
-            do {
-                try task.run()
-                task.waitUntilExit()
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let text = String(data: data, encoding: .utf8) ?? ""
-                DispatchQueue.main.async {
-                    busy = false
-                    answer = text.isEmpty ? "No output." : text
-                    refreshHud()
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    busy = false
-                    answer = "Error: \(error.localizedDescription)"
-                }
-            }
+        raw = ""
+        answer = ""
+        let tool = ToolStream(onText: { append($0) }, onExit: { finish($0) })
+        do {
+            try tool.start(args)
+            stream = tool
+        } catch {
+            answer = "Error: \(error.localizedDescription)"
         }
     }
 
-    private func refreshHud() {
-        let dir = ProcessInfo.processInfo.environment["OPENTERM_DATA_DIR"]
-            ?? FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/OpenTerm").path
-        let url = URL(fileURLWithPath: dir).appendingPathComponent("hud")
-        if let line = try? String(contentsOf: url, encoding: .utf8) {
-            hud = line.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
+    private func append(_ chunk: String) {
+        guard busy else { return }
+        raw += chunk
+        answer = stripANSI(raw)
     }
 
-    private func toolBinary(named command: String) -> String? {
-        let dirs = [
-            ProcessInfo.processInfo.environment["OPENTERM_RESOURCES"].map { "\($0)/bin" },
-            Bundle.main.bundlePath + "/Contents/Resources/openterm/bin",
-        ].compactMap { $0 }
-        for dir in dirs {
-            let path = "\(dir)/\(command)"
-            if FileManager.default.isExecutableFile(atPath: path) { return path }
-        }
-        return nil
+    private func finish(_ status: Int32) {
+        stream = nil
+        if answer.isEmpty { answer = status == 0 ? "No output." : "Exited with code \(status)." }
+    }
+
+    private func stop() {
+        guard let stream else { return }
+        stream.stop()
+        self.stream = nil
+        answer += answer.isEmpty ? "Stopped." : "\n\n[stopped]"
     }
 }
 
-let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
+@main
+@MainActor
+enum AgentPanelApp {
+    static func main() {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        let panel = makePanel()
+        dock(panel)
+        panel.orderFrontRegardless()
+        app.run()
+    }
 
-let panel = NSPanel(
-    contentRect: NSRect(x: 0, y: 0, width: 380, height: 520),
-    styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],
-    backing: .buffered,
-    defer: false
-)
-panel.title = "OpenTerm Agent"
-panel.isFloatingPanel = true
-panel.hidesOnDeactivate = false
-panel.level = .floating
-panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-panel.contentView = NSHostingView(rootView: AgentPanelView())
-dock(panel)
-panel.orderFrontRegardless()
-app.run()
+    private static func makePanel() -> NSPanel {
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 520),
+            styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "OpenTerm Agent"
+        panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.level = .floating
+        panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        panel.contentView = NSHostingView(rootView: AgentPanelView())
+        return panel
+    }
+}
 
+@MainActor
 func dock(_ panel: NSPanel) {
     let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
     guard let raw = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {

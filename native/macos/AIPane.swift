@@ -1,121 +1,125 @@
 import AppKit
 import SwiftUI
 
-struct ProviderFile: Codable {
-    var default_provider: String?
-    var openai: ProviderRecord?
-    var claude: ProviderRecord?
-    var mistral: ProviderRecord?
-}
-
-struct ProviderRecord: Codable {
-    var api_key: String?
-    var model: String?
-    var base_url: String?
-}
-
+/// AI provider settings, driven by `ai-models --json` and saved through `ai-connect`.
 struct AIPane: View {
-    @State private var provider = "openai"
-    @State private var model = "gpt-5.6-terra"
-    @State private var baseURL = "https://gateway.example"
-    @State private var apiKey = ""
-    @State private var status = "Token totals update after each ai-ask."
-    @State private var saved = false
+    @StateObject private var store = ProviderStore()
+    @State private var hud = readHudLine()
+
+    private static let sidebarWidth: CGFloat = 230
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("AI provider").font(.headline)
-            Picker("Provider", selection: $provider) {
-                Text("OpenAI compatible").tag("openai")
-                Text("Claude").tag("claude")
-                Text("Mistral").tag("mistral")
-                Text("Codex CLI").tag("codex")
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ProviderSidebar(store: store).frame(width: Self.sidebarWidth)
+                Divider()
+                detail.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            TextField("Model", text: $model).textFieldStyle(.roundedBorder)
-            TextField("Base URL", text: $baseURL).textFieldStyle(.roundedBorder)
-                .disabled(provider != "openai")
-            SecureField("API key (leave blank to keep)", text: $apiKey)
-                .textFieldStyle(.roundedBorder)
-                .disabled(provider == "codex")
-            Text(status).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+            Divider()
+            footer
+        }
+        .task { await store.load() }
+    }
+
+    @ViewBuilder private var detail: some View {
+        if let provider = store.selected {
+            ProviderDetail(provider: provider, store: store).id(provider.id)
+        } else if store.loading {
+            ProgressView("Loading providers…")
+        } else {
+            unavailable
+        }
+    }
+
+    private var unavailable: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.orange)
+            Text(store.error ?? "No providers reported by ai-models.")
+                .font(.system(.body, design: .monospaced))
+                .multilineTextAlignment(.center)
+                .textSelection(.enabled)
+            Button("Retry") { Task { await store.load() } }
+        }
+        .padding()
+    }
+
+    private var footer: some View {
+        HStack {
+            Text(hud ?? "No token session yet — run ai-ask.")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
             Spacer()
-            HStack {
-                Text(saved ? "Saved" : "Keys stay in ~/.config/openterm/providers.json")
-                    .foregroundStyle(saved ? .green : .secondary)
-                Spacer()
-                Button("Save") { save() }
-                    .buttonStyle(.borderedProminent).tint(.cyan)
+            Text("Keys are handed to ai-connect on stdin, never shown or logged.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .onAppear { hud = readHudLine() }
+    }
+}
+
+struct ProviderSidebar: View {
+    @ObservedObject var store: ProviderStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            List(selection: $store.selectedID) {
+                ForEach(ProviderKind.allCases, id: \.self) { kind in
+                    let providers = store.providers(of: kind)
+                    if !providers.isEmpty {
+                        Section(kind.sectionTitle) {
+                            ForEach(providers) { ProviderRow(provider: $0).tag($0.id) }
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            Divider()
+            refreshAll
+        }
+    }
+
+    private var refreshAll: some View {
+        HStack {
+            Button {
+                Task { await store.refresh(nil) }
+            } label: {
+                Label("Refresh all", systemImage: "arrow.clockwise")
+            }
+            .disabled(store.refreshing.contains(ProviderStore.allProviders))
+            Spacer()
+            if store.refreshing.contains(ProviderStore.allProviders) || store.loading {
+                ProgressView().controlSize(.small)
             }
         }
         .padding(8)
-        .onAppear { load() }
     }
+}
 
-    private var configURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/openterm/providers.json")
-    }
+struct ProviderRow: View {
+    let provider: ProviderInfo
 
-    private func load() {
-        guard let data = try? Data(contentsOf: configURL),
-              let file = try? JSONDecoder().decode(ProviderFile.self, from: data) else { return }
-        provider = file.default_provider ?? provider
-        let record = record(in: file)
-        model = record?.model ?? model
-        baseURL = record?.base_url ?? baseURL
-        status = hudLine()
-    }
+    private static let dotSize: CGFloat = 8
 
-    private func record(in file: ProviderFile) -> ProviderRecord? {
-        switch provider {
-        case "claude": file.claude
-        case "mistral": file.mistral
-        default: file.openai
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(provider.connected ? Color.green : Color.secondary.opacity(0.4))
+                .frame(width: Self.dotSize, height: Self.dotSize)
+                .help(provider.connected ? "Connected" : "Not connected")
+            Text(provider.label)
+            Spacer()
+            if provider.isDefault { DefaultBadge() }
         }
     }
+}
 
-    private func save() {
-        var file = (try? Data(contentsOf: configURL)).flatMap {
-            try? JSONDecoder().decode(ProviderFile.self, from: $0)
-        } ?? ProviderFile()
-        file.default_provider = provider
-        var entry = record(in: file) ?? ProviderRecord()
-        if !model.isEmpty { entry.model = model }
-        if provider == "openai" { entry.base_url = baseURL }
-        if !apiKey.isEmpty { entry.api_key = apiKey }
-        switch provider {
-        case "claude": file.claude = entry
-        case "mistral": file.mistral = entry
-        case "openai": file.openai = entry
-        default: break
-        }
-        do {
-            try write(file)
-            saved = true
-            status = hudLine()
-        } catch {
-            saved = false
-            status = error.localizedDescription
-        }
-    }
-
-    private func write(_ file: ProviderFile) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(file)
-        try FileManager.default.createDirectory(at: configURL.deletingLastPathComponent(),
-                                                withIntermediateDirectories: true)
-        try data.write(to: configURL, options: .atomic)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configURL.path)
-    }
-
-    private func hudLine() -> String {
-        let dir = ProcessInfo.processInfo.environment["OPENTERM_DATA_DIR"]
-            ?? FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/OpenTerm").path
-        let url = URL(fileURLWithPath: dir).appendingPathComponent("hud")
-        return (try? String(contentsOf: url, encoding: .utf8))?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            ?? "No token session yet — run ai-ask."
+struct DefaultBadge: View {
+    var body: some View {
+        Text("DEFAULT")
+            .font(.caption2.bold())
+            .foregroundStyle(.cyan)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(.cyan.opacity(0.12), in: Capsule())
     }
 }
