@@ -215,7 +215,7 @@ fn resolve_model(
         return Ok(None);
     }
     Err(format!(
-        "provider '{provider}' requires --model (run ai-connect)"
+        "provider '{provider}' has no model; choose one with: ai-models use {provider}"
     ))
 }
 
@@ -272,6 +272,6 @@ mod tests {
         let request = AskRequest::build(&settings, Provider::ClaudeCode, None, "hi".into());
         assert_eq!(request.expect("request").model, None);
         let missing = AskRequest::build(&settings, Provider::Mistral, None, "hi".into());
-        assert!(missing.unwrap_err().contains("requires --model"));
+        assert!(missing.unwrap_err().contains("ai-models use mistral"));
     }
 }

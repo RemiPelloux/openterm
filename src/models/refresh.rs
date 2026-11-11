@@ -39,7 +39,7 @@ fn collect(
             continue;
         };
         if !quiet {
-            println!("{provider}: {} models", models.len());
+            eprintln!("{provider}: {} models", models.len());
         }
         updates.push((provider, CachedModels::new(&endpoint, models, now)));
     }

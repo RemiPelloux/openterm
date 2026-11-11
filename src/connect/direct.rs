@@ -63,7 +63,7 @@ fn apply(
         return Err("custom requires --base-url URL (e.g. https://host/v1)".to_owned());
     }
     entry.model = args.model.clone().or(entry.model);
-    let model = model_label(provider, entry.model.as_deref())?;
+    let model = model_label(provider, entry.model.as_deref());
     if entry != ProviderEntry::default() {
         settings.set_entry(provider, entry);
     }
@@ -85,13 +85,15 @@ fn check_flags(args: &ConnectArgs, has_key: bool) -> Result<(), String> {
     Ok(())
 }
 
-fn model_label(provider: Provider, model: Option<&str>) -> Result<String, String> {
+/// A hosted provider may connect before a model is chosen: its model list can
+/// only be discovered once the key (and base URL) are saved.
+fn model_label(provider: Provider, model: Option<&str>) -> String {
     match model {
-        Some(model) => Ok(model.to_owned()),
-        None if provider.requires_model() => Err(format!(
-            "no model chosen for {provider}; pass --model MODEL (list them with 'ai-models {provider}')"
-        )),
-        None => Ok(format!("{provider} CLI default model")),
+        Some(model) => model.to_owned(),
+        None if provider.requires_model() => {
+            format!("no model yet; choose one with: ai-models use {provider}")
+        }
+        None => format!("{provider} CLI default model"),
     }
 }
 
@@ -223,13 +225,13 @@ mod tests {
     }
 
     #[test]
-    fn missing_model_points_to_ai_models() {
-        let error = connect(
+    fn connects_without_model_and_points_to_ai_models_use() {
+        let label = connect(
             &args(Provider::Mistral, None),
             Some("k"),
             &MemoryStore::default(),
         );
-        assert!(error.expect_err("model").contains("ai-models mistral"));
+        assert!(label.expect("connected").contains("ai-models use mistral"));
         let cli = connect(&args(Provider::Codex, None), None, &MemoryStore::default());
         assert_eq!(cli.as_deref(), Ok("codex CLI default model"));
     }

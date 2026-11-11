@@ -344,3 +344,64 @@ fn ai_models_use_rejects_unconnected_provider() {
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("ai-connect mistral"));
 }
+
+/// Serves exactly one HTTP request with `body` as JSON; returns the port.
+fn serve_json_once(body: &'static str) -> (u16, std::thread::JoinHandle<()>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept");
+        let mut request = [0_u8; 2048];
+        let _ = stream.read(&mut request);
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        stream.write_all(response.as_bytes()).expect("respond");
+    });
+    (port, server)
+}
+
+/// Runs `ai-models` against config and data under `base`, with no keychain
+/// and no custom-endpoint overrides from the caller's environment.
+fn isolated_ai_models(base: &std::path::Path, args: &[&str]) -> std::process::Output {
+    openterm_as("ai-models")
+        .args(args)
+        .env("OPENTERM_CONFIG_DIR", base)
+        .env("OPENTERM_DATA_DIR", base)
+        .env("OPENTERM_KEYCHAIN", "off")
+        .env_remove("OPENTERM_CUSTOM_BASE_URL")
+        .env_remove("OPENTERM_CUSTOM_API_KEY")
+        .output()
+        .expect("run ai-models")
+}
+
+/// The macOS app parses `--refresh --json` stdout, so progress lines must
+/// never be mixed into it.
+#[test]
+fn ai_models_refresh_json_keeps_stdout_pure_json() {
+    let (port, server) = serve_json_once(r#"{"data":[{"id":"my-model","created":1}]}"#);
+    let base = test_root();
+    std::fs::create_dir_all(&base).expect("temp dir");
+    let config =
+        format!(r#"{{"custom":{{"api_key":"k","base_url":"http://127.0.0.1:{port}/v1"}}}}"#);
+    std::fs::write(base.join("providers.json"), config).expect("config");
+    let output = isolated_ai_models(&base, &["custom", "--refresh", "--json"]);
+    server.join().expect("server");
+    let _ = std::fs::remove_dir_all(&base);
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("pure json");
+    let providers = json["providers"].as_array().expect("providers");
+    let custom = providers
+        .iter()
+        .find(|p| p["id"] == "custom")
+        .expect("custom");
+    assert_eq!(custom["models"][0], "my-model");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("custom: 1 models"));
+}

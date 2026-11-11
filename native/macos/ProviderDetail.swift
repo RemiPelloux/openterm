@@ -81,7 +81,7 @@ struct ProviderDetail: View {
         HStack(spacing: 6) {
             if store.refreshing.contains(provider.id) { ProgressView().controlSize(.small) }
             Button("Refresh models") { Task { await store.refresh(provider.id) } }
-                .disabled(store.refreshing.contains(provider.id))
+                .disabled(store.refreshing.contains(provider.id) || !provider.connected)
         }
     }
 
@@ -142,6 +142,11 @@ struct ProviderDetail: View {
     private var catalogCaption: String {
         if provider.kind == .cli {
             return "Optional. The CLI picks its own default model when this is empty."
+        }
+        if !provider.connected {
+            return provider.kind == .local
+                ? "Start the runtime, then Save; its models load automatically."
+                : "Fill in the details below and Save; the model list loads automatically."
         }
         guard let fetched = provider.fetchedAt else {
             return provider.models.isEmpty ? "No model list yet — try Refresh models." : ""

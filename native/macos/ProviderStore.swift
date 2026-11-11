@@ -109,9 +109,13 @@ final class ProviderStore: ObservableObject {
         refreshing.remove(key)
     }
 
+    /// Saves through `ai-connect`, then loads the provider's model list so a
+    /// newly connected endpoint shows its models without a manual refresh.
     func connect(_ request: ConnectRequest) async -> Bool {
         let input = request.apiKey.isEmpty ? nil : request.apiKey
-        return await mutate(request.arguments, input: input)
+        guard await mutate(request.arguments, input: input) else { return false }
+        if request.provider.kind != .cli { await refresh(request.provider.id) }
+        return true
     }
 
     func makeDefault(_ id: String) async {
