@@ -12,15 +12,21 @@ fn openterm_as(name: &str) -> Command {
     Command::new(link)
 }
 
+/// Tests run in parallel and share link names, so a link is never removed
+/// in place: a correct one is kept, otherwise a uniquely named link is
+/// renamed over it atomically.
 #[cfg(unix)]
 fn create_link(binary: &std::path::Path, link: &std::path::Path) {
-    use std::io::ErrorKind;
-    let _ = std::fs::remove_file(link);
-    match std::os::unix::fs::symlink(binary, link) {
-        Ok(()) => {}
-        Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
-        Err(error) => panic!("create command link: {error}"),
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    if std::fs::read_link(link).is_ok_and(|target| target == binary) {
+        return;
     }
+    let unique = NEXT.fetch_add(1, Ordering::Relaxed);
+    let staged = link.with_extension(format!("link-{}-{unique}", std::process::id()));
+    let _ = std::fs::remove_file(&staged);
+    std::os::unix::fs::symlink(binary, &staged).expect("create command link");
+    std::fs::rename(&staged, link).expect("install command link");
 }
 
 #[cfg(windows)]
