@@ -96,7 +96,7 @@ fn sync_fields(hud: &mut Hud, settings: &config::ProviderSettings) {
 }
 
 fn host_label(provider: Provider, settings: &config::ProviderSettings) -> String {
-    let endpoint = Endpoint::resolve(provider, settings);
+    let endpoint = Endpoint::with_key(provider, settings, None);
     if endpoint.base_url.is_empty() {
         return provider.to_string();
     }

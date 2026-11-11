@@ -19,9 +19,19 @@ pub struct Endpoint {
 
 impl Endpoint {
     pub fn resolve(provider: Provider, settings: &ProviderSettings) -> Self {
+        Self::with_key(provider, settings, settings.api_key(provider))
+    }
+
+    /// Uses `api_key` as given, so callers that only need the origin (or
+    /// hold a key not yet saved) skip the keychain lookup.
+    pub fn with_key(
+        provider: Provider,
+        settings: &ProviderSettings,
+        api_key: Option<String>,
+    ) -> Self {
         Self {
             base_url: base_url(provider, settings),
-            api_key: settings.api_key(provider),
+            api_key,
         }
     }
 

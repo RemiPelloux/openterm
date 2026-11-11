@@ -21,6 +21,9 @@ sha2 = "0.10.9"
 dialoguer = "0.12"
 ureq = { version = "3.3.0", default-features = false, features = ["json", "rustls"] }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "=3.6.3", features = ["apple-native"] }
+
 [lints.rust]
 unsafe_code = "forbid"
 unused = { level = "deny", priority = -1 }

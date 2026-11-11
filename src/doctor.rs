@@ -36,7 +36,7 @@ fn print_credentials() {
         let Some(variable) = config::env_var(provider) else {
             continue;
         };
-        let state = credential_state(&settings, provider, variable);
+        let state = credential_state(settings.key_source(provider));
         println!("  api {provider}: {state} ({variable})");
     }
 }
@@ -57,18 +57,12 @@ fn print_local_runtimes() {
     }
 }
 
-fn credential_state(
-    settings: &config::ProviderSettings,
-    provider: crate::providers::Provider,
-    variable: &str,
-) -> &'static str {
-    if std::env::var_os(variable).is_some() {
-        return "configured (env)";
+/// Names the source only; the key itself is never read into output.
+fn credential_state(source: config::KeySource) -> String {
+    if source == config::KeySource::None {
+        return "not configured".to_owned();
     }
-    if settings.is_stored(provider) {
-        return "configured (openterm)";
-    }
-    "not configured"
+    format!("configured ({})", source.as_str())
 }
 
 fn command_version(command: &str, args: &[&str]) -> Result<String, String> {
@@ -87,7 +81,17 @@ fn command_version(command: &str, args: &[&str]) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::command_version;
+    use super::{command_version, credential_state};
+    use crate::providers::config::KeySource;
+
+    #[test]
+    fn credential_state_names_the_source() {
+        assert_eq!(
+            credential_state(KeySource::Keychain),
+            "configured (keychain)"
+        );
+        assert_eq!(credential_state(KeySource::None), "not configured");
+    }
 
     #[test]
     fn missing_command_is_reported() {

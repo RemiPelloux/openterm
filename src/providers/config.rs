@@ -7,8 +7,11 @@ use std::path::{Path, PathBuf};
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
 
+mod credentials;
+pub mod keychain;
 mod settings;
 
+pub use credentials::{KeySource, Saved};
 pub use settings::env_var;
 
 const FILE_NAME: &str = "providers.json";

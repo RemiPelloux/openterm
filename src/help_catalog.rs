@@ -27,8 +27,8 @@ const AGENT: &[Entry] = &[
     },
     Entry {
         name: "ai-connect",
-        summary: "Connect to a provider (arrow keys) and pick a model",
-        usage: "ai-connect [--status]",
+        summary: "Connect a provider: arrow-key wizard, or flags for scripts",
+        usage: "ai-connect [PROVIDER [--model MODEL] [--key-stdin] [--base-url URL] [--no-default]] | --default PROVIDER | --status [--json]",
     },
     Entry {
         name: "ai-models",

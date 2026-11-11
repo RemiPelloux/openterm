@@ -24,9 +24,9 @@
 - Command argv may itself contain secrets; secret-flag redaction is required
   before managed execution expands beyond the current read-oriented commands.
 - Recoverable trash has no automatic 30-day purge yet.
-- Direct OpenAI, Claude, and Mistral keys may be stored in a mode-0600 JSON
-  compatibility file; Keychain/Secret Service migration is required before the
-  next distributable alpha.
+- On macOS, direct-provider keys live in the Keychain; elsewhere (and when it
+  is locked or `OPENTERM_KEYCHAIN=off`) they fall back to a mode-0600 JSON
+  compatibility file. Secret Service support on Linux is still pending.
 
 Codex authentication is owned by the installed Codex CLI. OpenTerm must not
 read or persist Codex OAuth tokens or embed private authentication constants.

@@ -27,26 +27,9 @@ impl ProviderSettings {
         parse_default(self.default_provider.as_deref())
     }
 
-    /// Environment first, then the stored key. `None` for keyless providers.
-    pub fn api_key(&self, provider: Provider) -> Option<String> {
-        let variable = env_var(provider)?;
-        if let Some(value) = std::env::var(variable).ok().filter(|v| !v.is_empty()) {
-            return Some(value);
-        }
-        let stored = &self.entry(provider)?.api_key;
-        (!stored.is_empty()).then(|| stored.clone())
-    }
-
-    /// Connected means usable without further setup: a key for hosted APIs,
-    /// a chosen model for local runtimes.
+    /// Local runtimes are connected once a model is chosen; they take no key.
     pub fn is_stored(&self, provider: Provider) -> bool {
-        let Some(entry) = self.entry(provider) else {
-            return false;
-        };
-        if provider.is_local() {
-            return entry.model.is_some();
-        }
-        !entry.api_key.is_empty()
+        provider.is_local() && self.model(provider).is_some()
     }
 }
 
@@ -87,10 +70,11 @@ mod tests {
                 base_url: Some("https://x.example/v1".to_owned()),
             },
         );
-        assert!(settings.is_stored(provider));
+        assert_eq!(settings.file_key(provider).as_deref(), Some("k"));
         assert_eq!(settings.model(provider), Some("m"));
         assert_eq!(settings.base_url(provider), Some("https://x.example/v1"));
-        assert!(!settings.is_stored(Provider::Compat(Compat::Groq)));
+        assert_eq!(settings.file_key(Provider::Compat(Compat::Groq)), None);
+        assert!(!settings.is_stored(provider));
     }
 
     #[test]

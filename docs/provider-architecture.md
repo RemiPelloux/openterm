@@ -74,7 +74,7 @@ Do not add those fields until the interactive client consumes them.
 - Endpoint: `POST {base}/v1/responses`.
 - Base URL: `OPENAI_BASE_URL`, else `base_url` in `providers.json`, else
   `https://api.openai.com`.
-- Authentication: bearer token from `OPENAI_API_KEY` or `providers.json`.
+- Authentication: bearer token from `OPENAI_API_KEY`, the Keychain, or `providers.json`.
 - Model: required explicitly by `ai-ask`, or the model saved by `ai-connect`.
 - Stable `instructions` plus `prompt_cache_key` so gateways can reuse prefixes.
 - Response parser: concatenates text content from response output messages.
@@ -143,14 +143,47 @@ Future action commands remain:
 
 - API keys are secrets; behavioral settings are not.
 - Read keys only at request time.
-- Direct-provider keys currently use environment variables or a private
-  mode-0600 compatibility file. Move them to OS keychain-backed references
-  before the next distributable alpha.
+- Resolution order for direct-provider keys: environment variable, then the
+  macOS Keychain (generic password, service `ai.openterm.providers`, account =
+  provider name such as `groq`), then the legacy `api_key` in the mode-0600
+  `providers.json`.
+- `ai-connect` stores keys in the Keychain and writes no `api_key` to the file.
+  When the Keychain is unavailable (Linux, CI, locked keychain) it falls back
+  to the 0600 file and says so on stderr. Reconnecting a provider moves its
+  legacy file key into the Keychain.
+- `OPENTERM_KEYCHAIN=off` disables Keychain access (reads and writes);
+  unit tests never reach the login keychain.
 - Never store keys in command history, result records, prompts, or logs.
-- Never pass keys on command lines.
+- Never pass keys on command lines: `ai-connect` reads them from a prompt or
+  from stdin (`--key-stdin`) and rejects `--key VALUE`. OpenTerm does not shell
+  out to `security` with a key argument.
 - Bind credentials to their exact provider endpoint.
 - Do not forward credentials across redirects to another origin.
-- `ai-doctor` reports only configured/not configured.
+- `ai-doctor` and `ai-connect --status [--json]` report only whether a key is
+  configured and its source (`env`, `keychain`, `file`), never the key.
+
+### Non-interactive connect
+
+Scripts and the macOS app configure providers without prompts:
+
+```sh
+pbpaste | ai-connect groq --model MODEL --key-stdin
+ai-connect custom --base-url https://host/v1 --model MODEL --key-stdin < key.txt
+ai-connect ollama --model llama3.2 --no-default
+ai-connect --default claude-code
+ai-connect --status --json
+```
+
+- `PROVIDER` is positional. `--model` defaults to the saved model; hosted and
+  local providers without one fail and point to `ai-models PROVIDER`.
+- `--base-url` is required for `custom` when none is stored (or set through
+  `OPENTERM_CUSTOM_BASE_URL`) and overrides the gateway for other hosted providers.
+- The default provider changes unless `--no-default` is passed.
+- Success prints one line, `Connected to PROVIDER · MODEL`, and exits 0.
+  Failures exit 1; usage errors exit 2.
+- `--status --json` prints
+  `{"default_provider": ID, "providers": [{"id", "label", "connected", "source", "model"}]}`
+  where `source` is `env`, `keychain`, `file`, `cli`, `local`, or `none`.
 - Codex owns its own authentication cache; OpenTerm should not parse or copy its tokens.
 
 ## Configuration direction

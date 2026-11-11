@@ -46,3 +46,16 @@ pub fn read_base_url(current: Option<&str>) -> Result<String, String> {
     let value = input.interact_text().map_err(|error| error.to_string())?;
     Ok(value.trim().trim_end_matches('/').to_owned())
 }
+
+/// Hosted providers whose model list came back empty or unreachable.
+pub fn read_model(provider: Provider) -> Result<String, String> {
+    let value = Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt(format!("No models listed; enter a {provider} model id"))
+        .interact_text()
+        .map_err(|error| error.to_string())?;
+    let model = value.trim();
+    if model.is_empty() {
+        return Err("a model id is required".to_owned());
+    }
+    Ok(model.to_owned())
+}
