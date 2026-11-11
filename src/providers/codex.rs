@@ -28,6 +28,14 @@ pub fn ask(request: &AskRequest) -> Result<String, String> {
     parse_output(&output)
 }
 
+/// True once `codex login status` reports a usable login.
+pub fn session_ready() -> bool {
+    Command::new("codex")
+        .args(["login", "status"])
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
 fn parse_output(output: &std::process::Output) -> Result<String, String> {
     if !output.status.success() {
         let error = String::from_utf8_lossy(&output.stderr);

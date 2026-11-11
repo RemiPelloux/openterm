@@ -12,7 +12,6 @@ mod openai;
 mod openai_stream;
 mod sse;
 
-pub use claude_code::session_ready as claude_code_ready;
 pub use compat::Compat;
 pub use endpoint::Endpoint;
 pub use local::base_url as local_base_url;
@@ -130,6 +129,23 @@ impl Provider {
 
     pub const fn is_local(self) -> bool {
         matches!(self, Self::Ollama | Self::LmStudio)
+    }
+
+    /// True when a delegated CLI reports a usable login; false for others.
+    pub fn cli_session_ready(self) -> bool {
+        match self {
+            Self::Codex => codex::session_ready(),
+            Self::ClaudeCode => claude_code::session_ready(),
+            _ => false,
+        }
+    }
+
+    /// The command a person runs to sign a delegated CLI in.
+    pub const fn login_command(self) -> &'static str {
+        match self {
+            Self::ClaudeCode => "claude auth login",
+            _ => "codex login",
+        }
     }
 
     /// Wire name of the provider family in `ai-models --json`.

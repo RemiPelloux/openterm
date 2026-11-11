@@ -10,7 +10,6 @@ use crate::providers::{Compat, Endpoint, Provider};
 use args::Action;
 use std::ffi::OsString;
 use std::io::{self, IsTerminal};
-use std::process::Command;
 
 const HELP: &str = "Usage: ai-connect
        ai-connect PROVIDER [--model MODEL] [--key-stdin] [--base-url URL] [--no-default]
@@ -148,30 +147,13 @@ fn choose_model(
 }
 
 fn ensure_cli_ready(provider: Provider) -> Result<(), String> {
-    if cli_session_ready(provider) {
+    if provider.cli_session_ready() {
         return Ok(());
     }
     Err(format!(
         "{provider} CLI is unavailable or not signed in; run '{}'",
-        login_hint(provider)
+        provider.login_command()
     ))
-}
-
-fn cli_session_ready(provider: Provider) -> bool {
-    match provider {
-        Provider::ClaudeCode => crate::providers::claude_code_ready(),
-        _ => Command::new("codex")
-            .args(["login", "status"])
-            .output()
-            .is_ok_and(|output| output.status.success()),
-    }
-}
-
-fn login_hint(provider: Provider) -> &'static str {
-    match provider {
-        Provider::ClaudeCode => "claude auth login",
-        _ => "codex login",
-    }
 }
 
 fn print_help() -> i32 {

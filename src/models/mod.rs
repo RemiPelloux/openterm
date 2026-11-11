@@ -11,7 +11,6 @@ pub use auto::refresh_if_stale;
 use crate::providers::Provider;
 use crate::providers::config::{self, ProviderSettings};
 use std::ffi::OsString;
-use std::process::Command;
 
 const HELP: &str = "Usage: ai-models [PROVIDER] [--refresh] [--json] [--quiet]
 
@@ -98,19 +97,9 @@ fn connected_flags(settings: &ProviderSettings) -> Vec<bool> {
 
 fn is_connected(provider: Provider, settings: &ProviderSettings) -> bool {
     if provider.is_cli() {
-        return cli_session_ready(provider);
+        return provider.cli_session_ready();
     }
     refresh::has_discovery(provider, settings)
-}
-
-fn cli_session_ready(provider: Provider) -> bool {
-    if provider == Provider::ClaudeCode {
-        return crate::providers::claude_code_ready();
-    }
-    Command::new("codex")
-        .args(["login", "status"])
-        .output()
-        .is_ok_and(|output| output.status.success())
 }
 
 fn print_help() -> i32 {

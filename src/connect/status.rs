@@ -28,7 +28,7 @@ pub fn print(json: bool) {
 
 fn row(provider: Provider, settings: &ProviderSettings) -> Row {
     let (connected, source) = if provider.is_cli() {
-        let ready = super::cli_session_ready(provider);
+        let ready = provider.cli_session_ready();
         (ready, if ready { "cli" } else { "none" })
     } else if provider.is_local() {
         let ready = settings.is_stored(provider);
@@ -93,7 +93,7 @@ fn describe(row: &Row) -> String {
         (true, "env") => format!("configured (environment{model})"),
         (true, "keychain") => format!("connected (keychain{model})"),
         (true, _) => format!("connected (providers.json{model})"),
-        _ if provider.is_cli() => format!("not connected — run {}", super::login_hint(provider)),
+        _ if provider.is_cli() => format!("not connected — run {}", provider.login_command()),
         _ if provider.is_local() => {
             format!("not connected — start {provider} at {host}, then run ai-connect")
         }
