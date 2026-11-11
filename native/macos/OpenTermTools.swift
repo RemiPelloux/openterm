@@ -21,10 +21,13 @@ struct ToolResult {
 
 let missingToolsMessage = "OpenTerm tools not found. Launch from OpenTerm.app."
 
-/// Locates an OpenTerm multicall binary inside the app bundle or `OPENTERM_RESOURCES`.
+/// Locates an OpenTerm multicall binary. The UI binaries are installed in the
+/// same `bin` directory as every `ai-*` tool, so their own directory is the
+/// reliable fallback when `OPENTERM_RESOURCES` is not in the environment.
 func toolBinary(named command: String) -> String? {
     let dirs = [
         ProcessInfo.processInfo.environment["OPENTERM_RESOURCES"].map { "\($0)/bin" },
+        Bundle.main.executableURL?.resolvingSymlinksInPath().deletingLastPathComponent().path,
         Bundle.main.bundlePath + "/Contents/Resources/openterm/bin",
     ].compactMap { $0 }
     for dir in dirs {

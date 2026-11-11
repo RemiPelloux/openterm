@@ -62,6 +62,7 @@ done
 xcrun swiftc -O -parse-as-library -module-cache-path "$cache/swift-modules" \
   -framework SwiftUI -framework AppKit \
   "$root/native/macos/OpenTermUI.swift" \
+  "$root/native/macos/SettingsAppDelegate.swift" \
   "$root/native/macos/AIPane.swift" \
   "$root/native/macos/ProviderDetail.swift" \
   "$root/native/macos/ProviderStore.swift" \

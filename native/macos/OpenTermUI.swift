@@ -279,6 +279,8 @@ extension Color {
 
 @main
 struct OpenTermUI: App {
+    @NSApplicationDelegateAdaptor(SettingsAppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup("OpenTerm Settings") {
             TabView {
