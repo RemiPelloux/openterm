@@ -174,9 +174,6 @@ mod tests {
 
     #[test]
     fn strip_scheme_keeps_host() {
-        assert_eq!(
-            strip_scheme("https://gateway.example/"),
-            "gateway.example"
-        );
+        assert_eq!(strip_scheme("https://gateway.example/"), "gateway.example");
     }
 }

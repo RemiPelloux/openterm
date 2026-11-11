@@ -24,4 +24,3 @@ MIT. Ghostty copyright and license notices must accompany distributed code.
 Pinned release revision:
 `332b2aefc6e72d363aa93ab6ecfc86eeeeb5ed28` (`v1.3.1`). Source and official
 DMG checksums are recorded in `native/ghostty.lock`.
-
