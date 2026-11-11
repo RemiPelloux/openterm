@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="372" viewBox="0 0 880 372" role="img" aria-label="OpenTerm terminal: ai-ask streams an answer with workspace context and compressed evidence">
+<title>OpenTerm ai-ask demo</title>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#05070b"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22d3ee" stop-opacity=".55"/><stop offset=".5" stop-color="#a78bfa" stop-opacity=".35"/><stop offset="1" stop-color="#22d3ee" stop-opacity=".55"/></linearGradient>
+</defs>
+<style>
+text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:14px;white-space:pre}
+@keyframes type{0%,5.71%{clip-path:inset(0 100% 0 0)}20.71%,88.57%{clip-path:inset(0 0 0 0);opacity:1}93.57%,100%{clip-path:inset(0 0 0 0);opacity:0}}
+.type{animation:type 14.0s steps(38,end) infinite}
+@keyframes caret{0%,5.71%{transform:translateX(0)}20.71%,100%{transform:translateX(320.3px)}}
+@keyframes blink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
+.caret{animation:caret 14.0s steps(38,end) infinite} .caret rect{animation:blink 1s infinite}
+@keyframes think{0%,22.14%{opacity:0}22.86%,30.00%{opacity:1}30.71%,100%{opacity:0}}
+.think{animation:think 14.0s infinite}
+@keyframes dot{0%,100%{opacity:.25}50%{opacity:1}}
+.dot{animation:dot .9s infinite} .d2{animation-delay:.15s} .d3{animation-delay:.3s}
+@keyframes live{0%,100%{opacity:1}50%{opacity:.35}} .live{animation:live 1.6s infinite}
+@keyframes l0{0%,30.71%{opacity:0}32.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l0{animation:l0 14.0s infinite}
+@keyframes l1{0%,33.71%{opacity:0}35.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l1{animation:l1 14.0s infinite}
+@keyframes l2{0%,36.71%{opacity:0}38.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l2{animation:l2 14.0s infinite}
+@keyframes l3{0%,39.71%{opacity:0}41.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l3{animation:l3 14.0s infinite}
+@keyframes l4{0%,42.71%{opacity:0}44.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l4{animation:l4 14.0s infinite}
+@keyframes l5{0%,45.71%{opacity:0}47.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l5{animation:l5 14.0s infinite}
+@keyframes l6{0%,48.71%{opacity:0}50.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l6{animation:l6 14.0s infinite}
+@keyframes l7{0%,51.71%{opacity:0}53.00%,88.57%{opacity:1}93.57%,100%{opacity:0}}
+.l7{animation:l7 14.0s infinite}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}.think{opacity:0}.caret{transform:translateX(320.3px)}}
+</style>
+<rect x="1" y="1" width="878" height="370" rx="14" fill="url(#bg)" stroke="url(#edge)" stroke-width="1.5"/>
+<rect x="1" y="1" width="878" height="40" rx="14" fill="#ffffff" fill-opacity=".03"/>
+<circle cx="26" cy="21" r="6" fill="#ff5f57"/><circle cx="46" cy="21" r="6" fill="#febc2e"/><circle cx="66" cy="21" r="6" fill="#28c840"/>
+<text x="440.0" y="26" text-anchor="middle" fill="#71717a" style="font-size:12.5px">OpenTerm · ~/projects/api</text>
+<text x="28" y="84"><tspan fill="#3f3f46">╭─ </tspan><tspan fill="#22d3ee">◆ </tspan><tspan fill="#5fd7ff" font-weight="700">OpenTerm</tspan><tspan fill="#3f3f46"> · </tspan><tspan fill="#d4d4d8">~/projects/api</tspan><tspan fill="#3f3f46"> · </tspan><tspan fill="#22d3ee">claude-code · 12.4k tok · 8.1k cached · </tspan><tspan class="live" fill="#34d399">live</tspan></text>
+<text x="28" y="106"><tspan fill="#3f3f46">│ </tspan><tspan fill="#a78bfa">⎇ main</tspan><tspan fill="#34d399"> ↑1</tspan><tspan fill="#fbbf24"> ●2</tspan></text>
+<text x="28" y="128"><tspan fill="#3f3f46">╰─ </tspan><tspan fill="#22d3ee">❯</tspan></text>
+<text class="type" x="70.2" y="128" fill="#f4f4f5">ai-ask &quot;why does cargo test take 40s?&quot;</text>
+<g class="caret"><rect x="70.2" y="114" width="8" height="18" fill="#22d3ee"/></g>
+<g class="think"><text x="28" y="158" fill="#71717a">thinking</text><circle class="dot d1" cx="103" cy="154" r="2.6" fill="#22d3ee"/><circle class="dot d2" cx="113" cy="154" r="2.6" fill="#22d3ee"/><circle class="dot d3" cx="123" cy="154" r="2.6" fill="#22d3ee"/></g>
+<text class="l0" x="28" y="158"><tspan fill="#5fd7ff" font-weight="700">▍Likely cause</tspan></text>
+<text class="l1" x="28" y="180"><tspan fill="#22d3ee">• </tspan><tspan fill="#d4d4d8">312 tests open one SQLite file and serialise on its lock</tspan></text>
+<text class="l2" x="28" y="202"><tspan fill="#22d3ee">• </tspan><tspan fill="#d4d4d8">bundled rusqlite rebuilds in debug for every test binary</tspan></text>
+<text class="l3" x="28" y="224"><tspan fill="#5fd7ff" font-weight="700">▍Fix</tspan></text>
+<text class="l4" x="28" y="246"><tspan fill="#22d3ee">• </tspan><tspan fill="#d4d4d8">open </tspan><tspan fill="#fbbf24">Connection::open_in_memory()</tspan><tspan fill="#d4d4d8"> per test</tspan></text>
+<text class="l5" x="28" y="268"><tspan fill="#22d3ee">• </tspan><tspan fill="#d4d4d8">add </tspan><tspan fill="#fbbf24">[profile.dev.package.&quot;*&quot;] opt-level = 2</tspan></text>
+<text class="l7" x="28" y="312"><tspan fill="#71717a">openterm: </tspan><tspan fill="#a78bfa">res_9f3c1a</tspan><tspan fill="#71717a"> · test log 41.2k → 2.9k tokens via RTK · cached</tspan></text>
+</svg>

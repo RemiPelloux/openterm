@@ -4,14 +4,28 @@
 
 OpenTerm uses LLMs for optional guidance through commands such as `ai-ask`. Terminal operation, RTK compression, and deterministic commands must continue working without an LLM connection.
 
-The initial provider set is:
+The provider set is:
 
 - OpenAI through the Responses API;
 - Claude through the Anthropic Messages API;
-- Mistral through Chat Completions;
-- Codex through the locally installed Codex CLI;
-- Ollama through the local OpenAI-compatible Chat Completions API;
-- LM Studio through the local OpenAI-compatible Chat Completions API.
+- Mistral, Ollama, LM Studio, and the OpenAI-compatible presets (OpenRouter,
+  Groq, DeepSeek, xAI, Gemini, Together, and a custom URL) through one shared
+  Chat Completions transport (`src/providers/chat.rs`);
+- Codex through the locally installed Codex CLI (a ChatGPT plan works through
+  `codex login`);
+- Claude Code through the locally installed `claude` CLI (a Claude Pro/Max
+  plan works through `claude auth login`).
+
+Every transport streams its answer. Provider settings are loaded once per
+command and resolved into an `Endpoint` (origin plus redacted key) per request.
+
+## Model discovery
+
+`ai-models` lists each provider's models from its own discovery endpoint and
+caches them for 24 hours in the data directory. `--refresh` re-fetches all
+connected providers concurrently, and `ai-ask` / `ai-explain` start a detached
+background refresh when the cache for their provider is stale. `ai-models --json`
+is the contract the macOS provider pane reads. No model id is hard-coded.
 
 ## OpenAgents findings
 

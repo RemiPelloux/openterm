@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OpenTerm — the AI-native terminal</title>
+<meta name="description" content="OpenTerm is a native macOS terminal for humans and AI agents: compressed command output, encrypted evidence, and any model — including your Claude or ChatGPT subscription.">
+<meta property="og:title" content="OpenTerm — the AI-native terminal">
+<meta property="og:description" content="Token-aware commands, lossless evidence, and any model. Built on Ghostty, written in Rust.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1220'/%3E%3Cpath d='M9 11l6 5-6 5' stroke='%2322d3ee' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M17 22h7' stroke='%23a78bfa' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="grid-bg" aria-hidden="true"></div>
+<header class="nav">
+  <a class="brand" href="./"><span class="mark">❯_</span> OpenTerm</a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#providers">Providers</a>
+    <a href="#install">Install</a>
+    <a href="docs.html">Docs</a>
+    <a class="gh" href="https://github.com/RemiPelloux/openterm">GitHub ↗</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow reveal">v0.1.0 · alpha · macOS</p>
+    <h1 class="reveal">The terminal that<br><span class="grad">speaks to your model</span></h1>
+    <p class="lede reveal">OpenTerm is a native terminal built on Ghostty with a Rust core. It shrinks noisy command output before your AI sees it, keeps every byte as encrypted evidence, and lets you use any model, including the Claude or ChatGPT plan you already pay for.</p>
+    <div class="cta reveal">
+      <a class="btn primary" href="#install">Get started</a>
+      <a class="btn" href="https://github.com/RemiPelloux/openterm/releases/latest">Download v0.1.0</a>
+    </div>
+    <figure class="shot reveal">
+      <img src="assets/hero.svg" width="880" height="372" alt="Animated OpenTerm session: ai-ask streams an answer about slow cargo tests with Git context and a compressed evidence reference.">
+    </figure>
+  </section>
+
+  <section id="features" class="features">
+    <h2 class="reveal">Built for humans <em>and</em> agents</h2>
+    <div class="cards">
+      <article class="card reveal"><span class="ico">⚡</span><h3>Answers stream instantly</h3><p>All providers stream: Claude, OpenAI, Mistral, Groq, Ollama, Claude Code and more. Settings load once per command, and requests reuse pooled connections.</p></article>
+      <article class="card reveal"><span class="ico">🗜</span><h3>Token-aware commands</h3><p>39 <code>ai-*</code> wrappers send test runs, linters, diffs and logs through RTK, so your model reads the signal instead of 40k tokens of noise.</p></article>
+      <article class="card reveal"><span class="ico">🔐</span><h3>Lossless, encrypted evidence</h3><p>Every managed run gets a <code>res_…</code> reference. Full output is kept with XChaCha20-Poly1305 and can be expanded later without rerunning.</p></article>
+      <article class="card reveal"><span class="ico">🧭</span><h3>Context without pasting</h3><p><code>ai-ask</code> attaches cwd, Git state and redacted shell files, answers in markdown, and can apply edits through OpenCode.</p></article>
+      <article class="card reveal"><span class="ico">🔄</span><h3>Models stay current</h3><p><code>ai-models</code> discovers models from each provider's own endpoint and refreshes stale lists in the background. Model ids are never hard-coded.</p></article>
+      <article class="card reveal"><span class="ico">🖥</span><h3>Native, not Electron</h3><p>Metal rendering, tabs, splits, a SwiftUI settings pane with a model picker, and an agent side panel that streams answers.</p></article>
+    </div>
+  </section>
+
+  <section class="pipeline">
+    <h2 class="reveal">Big outputs stay home</h2>
+    <img class="reveal" src="assets/flow.svg" width="880" height="200" alt="Command output is compressed by RTK, stored losslessly as encrypted evidence, and only the compressed form reaches your model.">
+  </section>
+
+  <section id="providers" class="providers">
+    <h2 class="reveal">Bring your own model</h2>
+    <p class="sub reveal">Use your existing subscription, an API key, or run models locally. Switch any time with <code>ai-connect</code>.</p>
+    <img class="reveal" src="assets/providers.svg" width="880" height="118" alt="Providers: Claude Pro/Max and ChatGPT subscriptions, OpenAI, Anthropic, Mistral, Gemini, Groq, OpenRouter, DeepSeek, xAI, Together, Ollama, LM Studio, any OpenAI-compatible URL.">
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>How</th><th>Providers</th><th>Credential</th></tr></thead>
+        <tbody>
+          <tr><td>Subscription</td><td><code>claude-code</code>, <code>codex</code></td><td>Your own <code>claude auth login</code> / <code>codex login</code>. OpenTerm never touches those tokens.</td></tr>
+          <tr><td>API key</td><td><code>openai</code> <code>claude</code> <code>mistral</code> <code>openrouter</code> <code>groq</code> <code>deepseek</code> <code>xai</code> <code>gemini</code> <code>together</code> <code>custom</code></td><td>macOS Keychain, or an environment variable</td></tr>
+          <tr><td>Local</td><td><code>ollama</code>, <code>lmstudio</code></td><td>None. Runs on your machine</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="install" class="install">
+    <h2 class="reveal">Install</h2>
+    <div class="steps">
+      <div class="step reveal"><span>1</span><div><h3>Get the CLI</h3><pre><code>curl -L -o openterm.tar.gz \
+  https://github.com/RemiPelloux/openterm/releases/latest/download/openterm-macos-arm64.tar.gz
+tar xzf openterm.tar.gz &amp;&amp; cd openterm
+./install.sh   # links ai-* into ~/.local/bin</code></pre></div></div>
+      <div class="step reveal"><span>2</span><div><h3>Connect a model</h3><pre><code>ai-connect                     # arrow-key wizard
+printf %s "$GROQ_API_KEY" | ai-connect groq --model llama-3.3-70b-versatile --key-stdin
+ai-connect claude-code         # uses your Claude Pro/Max login</code></pre></div></div>
+      <div class="step reveal"><span>3</span><div><h3>Ask, with context</h3><pre><code>ai-ask "why does cargo test take 40s?"
+ai-test cargo test             # compressed, with a res_… reference
+ai-explain --last              # explain the last result</code></pre></div></div>
+    </div>
+    <p class="sub reveal">Want the full native app? <a href="docs.html#native-terminal">Build OpenTerm.app from source</a>.</p>
+  </section>
+</main>
+
+<footer>
+  <p>Apache-2.0 · Built on <a href="https://github.com/ghostty-org/ghostty">Ghostty</a> and <a href="https://github.com/rtk-ai/rtk">RTK</a> · <a href="docs.html">Docs</a> · <a href="https://github.com/RemiPelloux/openterm">Source</a></p>
+</footer>
+
+<script>
+(() => {
+  const items = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    items.forEach(el => el.classList.add('in'));
+    return;
+  }
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -8% 0px' });
+  items.forEach((el, i) => { el.style.transitionDelay = `${(i % 6) * 60}ms`; io.observe(el); });
+})();
+</script>
+</body>
+</html>

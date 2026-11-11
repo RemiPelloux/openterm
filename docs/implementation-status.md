@@ -98,6 +98,18 @@ This file tracks shipped code against `roadmap.md`. A roadmap item is complete o
 - `ai-connect` delegates Codex authentication to the installed Codex CLI.
 - OpenTerm does not parse, copy, transmit, or persist Codex OAuth tokens.
 - Direct-provider model discovery remains isolated by transport.
+- `claude-code` provider delegates to the `claude` CLI, so Claude Pro/Max plans
+  work without OpenTerm handling OAuth tokens.
+- OpenAI-compatible presets: OpenRouter, Groq, DeepSeek, xAI, Gemini, Together,
+  and a custom base URL, sharing one Chat Completions transport.
+- Streaming for every provider through a shared SSE reader (Codex excepted).
+- Provider settings load once per command; one pooled HTTP agent per process.
+- `ai-models` with a 24-hour cache, concurrent refresh, and background
+  auto-refresh from `ai-ask` / `ai-explain`; no hard-coded model lists.
+- Scriptable `ai-connect PROVIDER --model M --key-stdin`, `--default`, and
+  `--status --json`; API keys stored in the macOS Keychain.
+- SwiftUI provider pane driven by `ai-models --json`, and a streaming agent
+  panel with a HUD file watcher instead of polling.
 
 ## Current verification
 

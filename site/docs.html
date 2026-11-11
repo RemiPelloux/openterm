@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OpenTerm Docs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1220'/%3E%3Cpath d='M9 11l6 5-6 5' stroke='%2322d3ee' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M17 22h7' stroke='%23a78bfa' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+</head>
+<body>
+<div class="grid-bg" aria-hidden="true"></div>
+<header class="nav">
+  <a class="brand" href="./"><span class="mark">❯_</span> OpenTerm</a>
+  <nav>
+    <a href="./#features">Features</a>
+    <a href="./#install">Install</a>
+    <a href="docs.html">Docs</a>
+    <a class="gh" href="https://github.com/RemiPelloux/openterm">GitHub ↗</a>
+  </nav>
+</header>
+<main class="docs">
+  <aside id="toc" aria-label="Documentation pages"></aside>
+  <article class="doc" id="doc"><p>Loading…</p></article>
+</main>
+<footer><p>Docs are rendered from <a href="https://github.com/RemiPelloux/openterm/tree/main/docs">docs/</a> on every push.</p></footer>
+<script>
+const PAGES = [
+  ['readme', 'Overview', 'README.md'],
+  ['provider-architecture', 'Providers', 'docs/provider-architecture.md'],
+  ['native-terminal', 'Native app', 'docs/native-terminal.md'],
+  ['synaptic-retention', 'History retention', 'docs/synaptic-retention.md'],
+  ['threat-model', 'Threat model', 'docs/threat-model.md'],
+  ['implementation-status', 'Status', 'docs/implementation-status.md'],
+  ['release-checklist', 'Release checklist', 'docs/release-checklist.md'],
+  ['roadmap', 'Roadmap', 'roadmap.md'],
+  ['adr-0001', 'ADR 0001', 'docs/adr/0001-foundation.md'],
+];
+const REPO = 'https://github.com/RemiPelloux/openterm/blob/main/';
+
+function toc(active) {
+  document.getElementById('toc').innerHTML = PAGES.map(([id, label]) =>
+    `<a href="#${id}" class="${id === active ? 'on' : ''}">${label}</a>`).join('');
+}
+
+function rewriteLinks(root, file) {
+  const base = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
+  root.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (/^(https?:|#|mailto:)/.test(href)) return;
+    const target = new URL(href, 'https://x/' + base).pathname.slice(1);
+    const page = PAGES.find(p => p[2] === target);
+    a.href = page ? `#${page[0]}` : REPO + target;
+  });
+  root.querySelectorAll('img[src]').forEach(img => {
+    const src = img.getAttribute('src');
+    if (!/^https?:/.test(src)) img.src = new URL(src, 'https://x/' + base).pathname.slice(1);
+  });
+}
+
+async function show() {
+  const id = location.hash.slice(1) || 'readme';
+  const page = PAGES.find(p => p[0] === id) || PAGES[0];
+  toc(page[0]);
+  const doc = document.getElementById('doc');
+  try {
+    const res = await fetch(page[2]);
+    if (!res.ok) throw new Error(res.status);
+    doc.innerHTML = DOMPurify.sanitize(marked.parse(await res.text()));
+    rewriteLinks(doc, page[2]);
+    document.title = `${page[1]} · OpenTerm Docs`;
+    window.scrollTo(0, 0);
+  } catch (error) {
+    doc.innerHTML = `<p>Could not load <code>${page[2]}</code>. <a href="${REPO + page[2]}">Read it on GitHub</a>.</p>`;
+  }
+}
+addEventListener('hashchange', show);
+show();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="200" viewBox="0 0 880 200" role="img" aria-label="Pipeline: command output is compressed by RTK, stored losslessly as encrypted evidence, and only the compressed form reaches your model">
+<title>OpenTerm token pipeline</title>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif}
+.t{font-size:15px;font-weight:700;fill:#8b949e} .s{font-size:12.5px;fill:#8b949e} .b{font-size:13px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.cap{font-size:12.5px;fill:#8b949e}
+@keyframes flow{to{stroke-dashoffset:-24}} .wire{stroke-dasharray:6 6;animation:flow .8s linear infinite}
+@keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+.n0{animation:pulse 3.2s ease-in-out 0.0s infinite}
+.n1{animation:pulse 3.2s ease-in-out 0.8s infinite}
+.n2{animation:pulse 3.2s ease-in-out 1.6s infinite}
+.n3{animation:pulse 3.2s ease-in-out 2.4s infinite}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}</style>
+<text class="cap" x="20" y="30">Big outputs stay on your disk. Your model sees the signal.</text>
+<g class="n0"><rect x="20.0" y="54" width="176" height="92" rx="14" fill="#71717a" fill-opacity=".07" stroke="#71717a" stroke-opacity=".6"/><text class="t" x="36.0" y="84">$ ai-test</text><text class="s" x="36.0" y="106">raw output</text><text class="b" x="36.0" y="130" fill="#71717a">41,210 tok</text></g><path class="wire" d="M202.0 100.0 L235.3 100.0" stroke="#71717a" stroke-width="2" fill="none"/><path d="M228.3 95.0 L235.3 100.0 L228.3 105.0" stroke="#71717a" stroke-width="2" fill="none"/><g class="n1"><rect x="241.3" y="54" width="176" height="92" rx="14" fill="#22d3ee" fill-opacity=".07" stroke="#22d3ee" stroke-opacity=".6"/><text class="t" x="257.3" y="84">RTK filter</text><text class="s" x="257.3" y="106">compressed</text><text class="b" x="257.3" y="130" fill="#22d3ee">2,940 tok</text></g><path class="wire" d="M423.3 100.0 L456.7 100.0" stroke="#22d3ee" stroke-width="2" fill="none"/><path d="M449.7 95.0 L456.7 100.0 L449.7 105.0" stroke="#22d3ee" stroke-width="2" fill="none"/><g class="n2"><rect x="462.7" y="54" width="176" height="92" rx="14" fill="#a78bfa" fill-opacity=".07" stroke="#a78bfa" stroke-opacity=".6"/><text class="t" x="478.7" y="84">evidence</text><text class="s" x="478.7" y="106">res_9f3c1a · encrypted</text><text class="b" x="478.7" y="130" fill="#a78bfa">lossless</text></g><path class="wire" d="M644.7 100.0 L678.0 100.0" stroke="#a78bfa" stroke-width="2" fill="none"/><path d="M671.0 95.0 L678.0 100.0 L671.0 105.0" stroke="#a78bfa" stroke-width="2" fill="none"/><g class="n3"><rect x="684.0" y="54" width="176" height="92" rx="14" fill="#34d399" fill-opacity=".07" stroke="#34d399" stroke-opacity=".6"/><text class="t" x="700.0" y="84">your model</text><text class="s" x="700.0" y="106">streams back</text><text class="b" x="700.0" y="130" fill="#34d399">any provider</text></g>
+<text class="cap" x="20" y="186">Expand any result later with ai-expand res_… — nothing is rerun.</text>
+</svg>

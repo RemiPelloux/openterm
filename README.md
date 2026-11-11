@@ -1,238 +1,191 @@
+<div align="center">
+
 # OpenTerm
 
-OpenTerm is an AI-native terminal with persistent sessions, token-aware command execution, native RTK-derived compression, and capability-safe agents and plugins. Every OpenTerm-native tool command uses the `ai-` prefix, leaving system commands untouched.
+**The terminal that speaks to your model.**
 
-The repository produces a native macOS terminal application built on
-[Ghostty](https://github.com/ghostty-org/ghostty) (branded and patched in-tree),
-with shell integration, encrypted evidence references, bundled RTK, LLM provider
-adapters, and the full `ai-*` command suite. The dedicated session daemon and AI
-sidecar remain under development.
+A native macOS terminal for humans and AI agents. It shrinks noisy command
+output before your model reads it, keeps every byte as encrypted evidence,
+and lets you use any LLM, including the Claude or ChatGPT plan you already pay for.
 
-## Why Rust
+[![CI](https://github.com/RemiPelloux/openterm/actions/workflows/ci.yml/badge.svg)](https://github.com/RemiPelloux/openterm/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/RemiPelloux/openterm?include_prereleases&color=22d3ee)](https://github.com/RemiPelloux/openterm/releases)
+[![Docs](https://img.shields.io/badge/docs-github%20pages-a78bfa)](https://remipelloux.github.io/openterm/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-34d399)](LICENSE)
 
-Rust is the primary language because OpenTerm needs reliable PTY/process control, a persistent daemon, low-latency terminal integration, safe concurrency, and direct reuse of RTK's Rust filtering work. The project starts as one binary with only the HTTP/JSON dependencies required by `ai-ask`; it will split into crates only when real ownership boundaries emerge.
+<img src="docs/assets/hero.svg" width="880" alt="Animated OpenTerm session: ai-ask streams an answer about slow cargo tests, with Git context in the prompt and a compressed evidence reference at the end.">
 
-## Requirements
+<img src="docs/assets/providers.svg" width="880" alt="Supported providers: Claude Pro/Max and ChatGPT subscriptions, OpenAI, Anthropic, Mistral, Gemini, Groq, OpenRouter, DeepSeek, xAI, Together, Ollama, LM Studio, and any OpenAI-compatible URL.">
 
-- Rust stable with `rustfmt` and Clippy
-- Git
-- RTK 0.43 for CLI development; the macOS app bundles it
-- macOS for the native app (Linux supported for CLI development)
-- **Optional (source engine build):** Xcode, Zig 0.15.2 (pinned in `native/ghostty.lock`), Homebrew `gettext`
+[**Docs**](https://remipelloux.github.io/openterm/docs.html) ·
+[**Download**](https://github.com/RemiPelloux/openterm/releases/latest) ·
+[**Roadmap**](roadmap.md)
 
-Install Rust through [rustup](https://rustup.rs/), then verify:
+</div>
 
-```sh
-rustup component add rustfmt clippy
-make verify
-```
+---
 
-If `cargo` is not directly available but `rustup` is, the repository's `scripts/cargo.sh` wrapper uses `rustup run stable cargo` automatically.
+## Why OpenTerm
 
-## Quick start (macOS app)
+| | |
+|---|---|
+| ⚡ **Answers stream instantly** | All providers stream their answer as it is written. Settings load once per command, and HTTP connections are pooled. |
+| 🗜 **Token-aware commands** | 39 `ai-*` wrappers (tests, linters, diffs, logs) send output through [RTK](https://github.com/rtk-ai/rtk), so the model reads the signal and not 40k tokens of noise. |
+| 🔐 **Lossless evidence** | Every managed run gets a `res_…` id. The full output is encrypted with XChaCha20-Poly1305 and can be expanded later without rerunning. |
+| 🧭 **Context without pasting** | `ai-ask` attaches cwd, Git state, and redacted shell files, answers in terminal markdown, and can apply edits through OpenCode. |
+| 🔄 **Models stay current** | `ai-models` reads each provider's own model-list endpoint and refreshes stale lists in the background. No model id is hard-coded. |
+| 🖥 **Native** | Ghostty engine with Metal rendering, tabs, and splits, plus a SwiftUI provider pane and a streaming agent side panel. |
 
-```sh
-make app
-open dist/OpenTerm.app
-```
+<p align="center"><img src="docs/assets/flow.svg" width="880" alt="Pipeline: command output is compressed by RTK, stored losslessly as encrypted evidence, and only the compressed form reaches your model."></p>
 
-Install to `/Applications`:
+## Quick start
 
-```sh
-ditto dist/OpenTerm.app /Applications/OpenTerm.app
-```
-
-The local alpha DMG is written to `dist/OpenTerm-0.1.0-alpha-macos-arm64.dmg`.
-It is ad-hoc signed for local testing, not Developer ID signed or notarized.
-
-### Connect an LLM provider
-
-Inside OpenTerm, run the interactive setup wizard:
+### CLI (any terminal)
 
 ```sh
-ai-connect
-```
-
-Use arrow keys to pick a provider (Codex, OpenAI, Claude, Mistral, Ollama,
-LM Studio). Direct API providers then discover models and save the selected
-default. Their keys are currently stored in `~/.config/openterm/providers.json`
-(mode `600`), with environment variables taking precedence.
-
-- **Codex** — delegates authentication to the installed Codex CLI and never
-  copies its OAuth tokens; run `codex login` first
-- **API providers** — prompt for an API key, then fetch live model lists.
-  OpenAI-compatible gateways use `OPENAI_BASE_URL` or `base_url` in
-  `providers.json` (origin only, without `/v1`)
-- **Ollama / LM Studio** — no API key; start the local runtime, then pick a
-  model it has already pulled. Override the host with `OLLAMA_HOST` or
-  `LMSTUDIO_HOST` if it is not on the default port.
-
-Check status without exposing secrets:
-
-```sh
-ai-connect --status
+curl -L -o openterm.tar.gz \
+  https://github.com/RemiPelloux/openterm/releases/latest/download/openterm-macos-arm64.tar.gz
+tar xzf openterm.tar.gz && cd openterm
+./install.sh          # links openterm + every ai-* command into ~/.local/bin
 ai-doctor
 ```
 
-## Development
+### Native app (from source)
 
 ```sh
-make build
-./target/debug/openterm
-./target/debug/ai-version
-./target/debug/ai-help
-./target/debug/ai-connect --status
-./target/debug/ai-ask "what command shows available disk space?"
-./target/debug/ai-run df -h
-./target/debug/ai-rg "TODO" src
-make verify
+make app              # needs Xcode + Zig 0.15.2, see "Terminal engine" below
+open dist/OpenTerm.app
 ```
 
-Create an optimized build and all `ai-*` command links with:
+## Connect a model
 
 ```sh
-make release
-./target/release/openterm
-./target/release/openterm mascot
-./target/release/OpenTermUI
+ai-connect            # arrow-key wizard: provider → key → model
 ```
 
-### Terminal engine (Ghostty source)
-
-OpenTerm vendors Ghostty as a git clone under `native/ghostty/` (gitignored).
-Branding and behavior patches are applied in that tree.
+Or configure it from a script. Keys are read from stdin and never accepted as an argument:
 
 ```sh
-make clone-ghostty    # clone ghostty-org/ghostty at the pinned commit
-make terminal         # build GhosttyKit (Zig) + Ghostty.app (Xcode)
-make app              # package OpenTerm.app
+printf %s "$GROQ_API_KEY" | ai-connect groq --model llama-3.3-70b-versatile --key-stdin
+ai-connect custom --base-url https://llm.example.com/v1 --model my-model --key-stdin < key.txt
+ai-connect --default claude-code
+ai-connect --status --json
 ```
 
-Pin and checksums live in `native/ghostty.lock`. If the source build is unavailable,
-fall back to the official Ghostty DMG:
+| How | Providers | Credential |
+|---|---|---|
+| **Subscription** | `claude-code` (Claude Pro/Max), `codex` (ChatGPT Plus/Pro) | The official CLI's own login: `claude auth login` / `codex login`. OpenTerm never reads, copies, or stores those tokens. |
+| **API key** | `openai`, `claude`, `mistral`, `openrouter`, `groq`, `deepseek`, `xai`, `gemini`, `together`, `custom` | macOS Keychain (`ai.openterm.providers`), or `*_API_KEY` env vars, which take precedence |
+| **Local** | `ollama`, `lmstudio` | None. Set `OLLAMA_HOST` / `LMSTUDIO_HOST` if you moved the port |
+
+### Models
 
 ```sh
-OPENTERM_USE_DMG=1 make app
-# or
-GHOSTTY_APP=/path/to/Ghostty.app make app
+ai-models                     # cached models for connected providers, * = selected
+ai-models --refresh           # re-discover from every connected provider at once
+ai-models groq --refresh      # just one
+ai-models --json              # machine-readable, used by the macOS settings pane
 ```
 
-See `docs/native-terminal.md` for runtime layout, signing, and packaging details.
+Lists are cached for 24 hours. When `ai-ask` notices that a list is stale, it
+refreshes it in a detached background process, so the next picker is current
+and your question isn't delayed.
+
+## Ask, run, explain
+
+```sh
+ai-ask "what is using the most disk space here?"
+ai-ask --provider ollama --model llama3.2 "explain df -h"
+ai-test cargo test            # compressed output + res_… evidence id
+ai-expand res_ab12…           # the full original output, no rerun
+ai-explain --last             # explain the last result with your model
+ai-chat                       # in-terminal chat
+```
+
+`ai-ask` answers in streamed markdown. When it returns an `opencode` block, OpenTerm
+applies it with `opencode --print` in a TTY and shows the diff. `ai-chat` and
+`ai-explain` are read-only. Identical questions hit a local 24-hour cache that is
+keyed by provider, model, and endpoint.
 
 ## Commands
 
-Run `ai-help` for the full catalog (supports `--markdown` and `--plain`).
+Run `ai-help` for the full catalog (`--markdown`, `--plain`). Every OpenTerm
+command starts with `ai-`, so system commands are never shadowed.
 
 | Area | Commands |
 |---|---|
-| Agent | `ai-ask`, `ai-chat`, `ai-connect`, `ai-explain`, `ai-panel`, `ai-workspace` |
-| System | `ai-doctor`, `ai-context`, `ai-ui`, `ai-version`, `ai-help` |
+| Agent | `ai-ask`, `ai-chat`, `ai-connect`, `ai-models`, `ai-explain`, `ai-panel`, `ai-workspace` |
+| System | `ai-doctor`, `ai-context`, `ai-ui`, `ai-settings`, `ai-version`, `ai-help` |
 | Search & inspect | `ai-rg`, `ai-read`, `ai-ls`, `ai-json`, `ai-tree`, `ai-find`, `ai-grep`, … |
 | Development | `ai-test`, `ai-lint`, `ai-cargo`, `ai-pytest`, `ai-tsc`, `ai-go`, `ai-gradle`, … |
 | Evidence | `ai-run`, `ai-result`, `ai-expand`, `ai-page`, `ai-export`, `ai-pin`, `ai-forget`, `ai-restore` |
 | History | `ai-history`, `ai-search-history`, `ai-clean-history`, `ai-usage` |
 
-RTK-backed commands print a stable evidence reference on stderr:
+## How it is built
 
 ```text
-openterm: result res_ab12... (expand with: ai-expand res_ab12...)
+src/
+  providers/   one Provider enum · Endpoint (origin + redacted key) · transports:
+               openai (Responses) · claude (Messages) · chat (Chat Completions,
+               shared by Mistral/local/gateways) · codex + claude_code (official CLIs)
+               sse.rs streaming reader · config/ settings loaded once per command
+  models/      discovery, 24 h cache, concurrent refresh, background auto-update
+  connect/     wizard + scriptable ai-connect, Keychain storage
+  results/     SQLite WAL metadata + XChaCha20-Poly1305 evidence blobs
+native/macos/  launcher, SwiftUI settings + provider pane, streaming agent panel
 ```
 
-Inspect and retrieve without rerunning:
+- **Rust, one binary.** `openterm` is a multicall binary, and every `ai-*` command is a symlink to it.
+- **Credentials.** Keys stay out of argv, logs, prompts, and history. Each key is bound to its provider's origin, and redirects are disabled.
+- **Local first.** The terminal, RTK, and evidence commands work without any LLM.
+
+Read more in the [provider architecture](docs/provider-architecture.md),
+[threat model](docs/threat-model.md), and [roadmap](roadmap.md).
+
+## Development
 
 ```sh
-ai-result res_ab12... --json
-ai-expand res_ab12...
-ai-explain --last
+rustup component add rustfmt clippy
+make build            # target/debug/openterm + ai-* links
+make verify           # size limits, fmt, clippy -D warnings, tests
 ```
 
-## Local evidence store
+Requirements: Rust stable, Git, and RTK 0.43+ for CLI work. The native app also needs
+Xcode, Zig 0.15.2 (pinned in `native/ghostty.lock`), and Homebrew `gettext`.
 
-Metadata uses SQLite WAL. Evidence blobs use XChaCha20-Poly1305 with a private
-mode-0600 local key. Set `OPENTERM_DATA_DIR` to override the default data path.
-History retention scoring is documented in `docs/synaptic-retention.md`.
+### Terminal engine (Ghostty source)
 
-The launcher respects `NO_COLOR` and `OPENTERM_REDUCED_MOTION`. Run
-`openterm mascot` to preview the canonical mascot animation.
-
-Inside the native app, zsh and Bash retain the user's existing configuration
-and gain an OpenTerm layer: welcome banner, dynamic window title, `ai-cd`, and
-live Git context. Run `OpenTermUI` or `ai-ui` to edit theme, font, colors,
-opacity, glass blur, padding, and titlebar with live preview.
-
-Source the integration to enable `ai-cd` in a parent shell:
+OpenTerm clones Ghostty into `native/ghostty/` (gitignored) at a pinned commit
+and applies its branding patches there.
 
 ```sh
-source /path/to/OpenTerm/shell/openterm.zsh
-# or
-source /path/to/OpenTerm/shell/openterm.bash
+make clone-ghostty    # clone ghostty-org/ghostty at the pinned commit
+make terminal         # build GhosttyKit (Zig) + Ghostty.app (Xcode)
+make app              # package OpenTerm.app + DMG
+OPENTERM_USE_DMG=1 make app   # fallback: use the official Ghostty DMG
 ```
 
-## LLM providers
+The local DMG is ad-hoc signed for testing. It is not Developer ID signed or
+notarized. See [docs/native-terminal.md](docs/native-terminal.md).
 
-`ai-ask` inspects cwd, Git, and shell startup files, then answers in terminal
-markdown. When the model returns an `opencode` prompt, OpenTerm applies it with
-`opencode --dangerously-skip-permissions --print` and shows the diff.
-`ai-chat` and `ai-explain` remain read-only. Codex is the default provider
-and runs through `codex exec` with ephemeral, read-only settings.
+### Data and settings
 
-After `ai-connect`, stored provider and model defaults apply automatically.
-Identical `ai-ask` prompts reuse a local 24-hour LRU cache; OpenAI requests also
-send a stable prompt-cache key so the gateway can reuse prefixes.
-
-```sh
-ai-chat
-ai-panel
-openterm settings
-ai-ask "what is using the most disk space here?"
-ai-ask --workspace "summarize this repo"
-ai-ask --provider openai --model gpt-4o-mini "explain df -h"
-ai-ask --provider ollama --model llama3.2 "explain df -h"
-```
-
-| Provider | Credential |
+| What | Where |
 |---|---|
-| Codex CLI | Existing `codex login` session |
-| OpenAI Responses API | `ai-connect` or `OPENAI_API_KEY` |
-| Claude Messages API | `ai-connect` or `ANTHROPIC_API_KEY` |
-| Mistral Chat Completions | `ai-connect` or `MISTRAL_API_KEY` |
-| Ollama | Running local runtime (`OLLAMA_HOST`, default `http://127.0.0.1:11434`) |
-| LM Studio | Running local runtime (`LMSTUDIO_HOST`, default `http://127.0.0.1:1234`) |
+| Provider settings | `~/.config/openterm/providers.json` (0600, no keys when Keychain is available) |
+| Evidence, HUD, model cache | `~/Library/Application Support/OpenTerm` (`OPENTERM_DATA_DIR`) |
+| Shell integration | `source shell/openterm.zsh` or `shell/openterm.bash` |
 
-`ai-doctor` reports configured / not configured only — never prints secrets.
-Direct-provider keys move to Keychain and Secret Service before the next
-distributable alpha.
-Provider architecture and safety rules: `docs/provider-architecture.md`.
+`NO_COLOR` and `OPENTERM_REDUCED_MOTION` are respected.
 
-Enable the repository pre-commit hook once:
+## Status
 
-```sh
-git config core.hooksPath .githooks
-```
-
-## Repository map
-
-```text
-src/                  OpenTerm CLI, providers, evidence store, ai-connect
-tests/                CLI behavior tests
-docs/                 Architecture, native terminal, provider contracts
-shell/                zsh and Bash parent-shell integrations
-native/               Ghostty lockfile, macOS launcher, config, patches
-native/ghostty/       Ghostty source clone (gitignored; make clone-ghostty)
-scripts/              Build, verify, and packaging scripts
-.cursor/rules/        Canonical Pelloux engineering discipline
-roadmap.md            Product, architecture, and delivery roadmap
-```
-
-Current delivery status is tracked in `docs/implementation-status.md`.
-
-## Engineering rules
-
-The canonical local rules are in `.cursor/rules/pelloux-guidelines.mdc`. Production Rust files target 300 lines and fail above 400; functions target 25 lines; APIs accept at most four parameters. `make verify` enforces formatting, compilation, Clippy, tests, and file-size limits.
-
-All new user-facing OpenTerm tool executables must begin with `ai-`. The `openterm` executable is reserved for launching and controlling the application.
+OpenTerm is an **alpha**. The session daemon, AI sidecar, plugin system, and
+notarized builds are still on the [roadmap](roadmap.md). Progress is tracked in
+[docs/implementation-status.md](docs/implementation-status.md).
 
 ## License
 
-OpenTerm is licensed under Apache-2.0. Third-party and mascot provenance is
-recorded in `THIRD_PARTY_NOTICES.md` and `design/mascot/README.md`.
+[Apache-2.0](LICENSE). Built on [Ghostty](https://github.com/ghostty-org/ghostty)
+(MIT) and [RTK](https://github.com/rtk-ai/rtk) (Apache-2.0); see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
