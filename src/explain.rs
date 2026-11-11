@@ -29,7 +29,7 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
 }
 
 fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, String> {
-    let mut provider = crate::providers::config::default_provider();
+    let mut provider = None;
     let mut model = None;
     let mut use_last = false;
     let mut result = None;
@@ -39,7 +39,7 @@ fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, Strin
     while let Some(argument) = args.next() {
         match argument.as_str() {
             "--help" | "-h" => return Ok(None),
-            "--provider" => provider = parse_provider(args.next())?,
+            "--provider" => provider = Some(parse_provider(args.next())?),
             "--model" => model = Some(required_value("--model", args.next())?),
             "--last" => use_last = true,
             "--result" => result = Some(required_value("--result", args.next())?),
@@ -58,7 +58,7 @@ fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, Strin
 }
 
 struct ExplainOptions {
-    provider: Provider,
+    provider: Option<Provider>,
     model: Option<String>,
     use_last: bool,
     result: Option<String>,
@@ -66,7 +66,10 @@ struct ExplainOptions {
 }
 
 fn build_request(options: ExplainOptions) -> Result<Option<AskRequest>, String> {
-    let model = crate::providers::resolve_model(options.provider, options.model)?;
+    let settings = crate::providers::config::load();
+    let provider = options
+        .provider
+        .unwrap_or_else(|| settings.default_provider());
     let context = result_context(options.use_last, options.result)?;
     let focus = if options.question.is_empty() {
         "Explain this command output clearly and concisely. Highlight errors, next steps, and what matters for an agent.".to_owned()
@@ -74,11 +77,7 @@ fn build_request(options: ExplainOptions) -> Result<Option<AskRequest>, String> 
         options.question.join(" ")
     };
     let prompt = format!("{context}\n\nQuestion:\n{focus}");
-    Ok(Some(AskRequest {
-        provider: options.provider,
-        model,
-        prompt,
-    }))
+    AskRequest::build(&settings, provider, options.model, prompt).map(Some)
 }
 
 fn result_context(use_last: bool, result: Option<String>) -> Result<String, String> {

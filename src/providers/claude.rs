@@ -1,8 +1,7 @@
-use super::{AskRequest, Provider, api_key, http_agent, http_error, model, non_empty, read_json};
+use super::{AskRequest, Provider, http_agent, http_error, model, non_empty, read_json};
 use serde_json::{Value, json};
 
-const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
-const API_VERSION: &str = "2023-06-01";
+pub(crate) const API_VERSION: &str = "2023-06-01";
 const MAX_OUTPUT_TOKENS: u16 = 4_096;
 
 pub fn ask(request: &AskRequest) -> Result<String, String> {
@@ -13,8 +12,8 @@ pub fn ask(request: &AskRequest) -> Result<String, String> {
         "messages": [{"role": "user", "content": request.prompt}],
     });
     let mut response = http_agent()
-        .post(ENDPOINT)
-        .header("x-api-key", api_key("ANTHROPIC_API_KEY")?)
+        .post(request.endpoint.url("v1/messages"))
+        .header("x-api-key", request.endpoint.api_key(Provider::Claude)?)
         .header("anthropic-version", API_VERSION)
         .send_json(body)
         .map_err(|error| http_error(Provider::Claude, &error))?;

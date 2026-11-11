@@ -1,8 +1,8 @@
 mod menu;
 mod models;
 
-use crate::providers::Provider;
-use crate::providers::config::{self, ProviderEntry};
+use crate::providers::config::{self, ProviderEntry, ProviderSettings};
+use crate::providers::{Compat, Endpoint, Provider};
 use std::ffi::OsString;
 use std::io::{self, IsTerminal};
 use std::process::Command;
@@ -13,8 +13,11 @@ Interactive provider setup for OpenTerm.
 
 Use arrow keys to pick a provider, then a model (sorted newest first).
 API keys are stored in ~/.config/openterm/providers.json (mode 600).
-Codex authentication is delegated to the installed Codex CLI.
+Subscriptions: ChatGPT through the Codex CLI (codex login), Claude Pro/Max
+through the Claude Code CLI (claude auth login). OpenTerm never stores their tokens.
 Ollama and LM Studio need no key; start the runtime, then pick a pulled model.
+OpenRouter, Groq, DeepSeek, xAI, Gemini, Together, or any custom
+OpenAI-compatible URL connect with an API key.
 ";
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
@@ -67,12 +70,12 @@ fn run_interactive() -> i32 {
 }
 
 fn run_wizard() -> Result<(), String> {
+    let mut settings = config::load();
     let provider = menu::select_provider()?;
-    let model = match provider {
-        Provider::Codex => connect_codex()?,
-        other if other.is_local() => connect_local_provider(other)?,
-        other if other.uses_api_key() => connect_api_provider(other)?,
-        other => return Err(format!("provider '{other}' cannot be connected this way")),
+    let model = if provider.is_cli() {
+        connect_cli(&mut settings, provider)?
+    } else {
+        connect_hosted(&mut settings, provider)?
     };
     println!("\nConnected to {provider} · {model}");
     if let Ok(path) = config::config_path() {
@@ -81,134 +84,128 @@ fn run_wizard() -> Result<(), String> {
     Ok(())
 }
 
-fn connect_codex() -> Result<String, String> {
-    if !codex_session_ready() {
-        return Err("Codex CLI is unavailable or not authenticated; run 'codex login'".to_owned());
+/// Delegated CLIs own their login (a GPT plan via `codex`, a Claude plan
+/// via `claude`); only the default-provider choice is recorded here.
+fn connect_cli(settings: &mut ProviderSettings, provider: Provider) -> Result<String, String> {
+    if !cli_session_ready(provider) {
+        return Err(format!(
+            "{provider} CLI is unavailable or not signed in; run '{}'",
+            login_hint(provider)
+        ));
     }
-    let mut settings = config::load();
-    settings.default_provider = Some("codex".to_owned());
-    config::save(&settings)?;
-    Ok("Codex CLI default model".to_owned())
+    settings.default_provider = Some(provider.to_string());
+    config::save(settings)?;
+    crate::hud::sync_from_config(settings);
+    Ok(format!("{provider} CLI default model"))
 }
 
-fn connect_api_provider(provider: Provider) -> Result<String, String> {
-    let api_key = menu::read_api_key(provider)?;
-    let choices = models::list_for_provider(provider, &api_key);
-    persist_model(
-        provider,
-        api_key,
-        menu::select_model(&choices, "Select model")?,
-    )
-}
-
-fn connect_local_provider(provider: Provider) -> Result<String, String> {
-    let choices = models::list_for_provider(provider, "");
-    if choices.is_empty() {
+fn connect_hosted(settings: &mut ProviderSettings, provider: Provider) -> Result<String, String> {
+    let mut entry = settings.entry(provider).cloned().unwrap_or_default();
+    if provider == Provider::Compat(Compat::Custom) {
+        entry.base_url = Some(menu::read_base_url(entry.base_url.as_deref())?);
+    }
+    if provider.uses_api_key() {
+        entry.api_key = menu::read_api_key(provider)?;
+    }
+    let choices = list_models(settings, provider, &entry);
+    if choices.is_empty() && provider.is_local() {
         return Err(format!(
             "{provider} is not reachable at {}; start it, pull a model, then retry",
             crate::providers::local_base_url(provider)
         ));
     }
-    persist_model(
-        provider,
-        String::new(),
-        menu::select_model(&choices, "Select model")?,
-    )
-}
-
-fn persist_model(provider: Provider, api_key: String, model: String) -> Result<String, String> {
-    let mut settings = config::load();
-    let base_url = kept_openai_base(provider, &settings);
-    config::store_entry(
-        &mut settings,
-        provider,
-        ProviderEntry {
-            api_key,
-            model: Some(model.clone()),
-            base_url,
-        },
-    );
-    settings.default_provider = Some(provider.to_string());
-    config::save(&settings)?;
-    crate::hud::sync_from_config();
+    let model = menu::select_model(&choices, "Select model")?;
+    entry.model = Some(model.clone());
+    persist(settings, provider, entry)?;
     Ok(model)
 }
 
-fn kept_openai_base(provider: Provider, settings: &config::ProviderSettings) -> Option<String> {
-    if provider != Provider::OpenAi {
-        return None;
-    }
-    std::env::var("OPENAI_BASE_URL")
-        .ok()
-        .filter(|value| !value.trim().is_empty())
-        .or_else(|| {
-            settings
-                .openai
-                .as_ref()
-                .and_then(|entry| entry.base_url.clone())
-        })
+fn list_models(
+    settings: &ProviderSettings,
+    provider: Provider,
+    entry: &ProviderEntry,
+) -> Vec<String> {
+    let mut draft = settings.clone();
+    draft.set_entry(provider, entry.clone());
+    models::list_for_provider(provider, &Endpoint::resolve(provider, &draft))
+}
+
+fn persist(
+    settings: &mut ProviderSettings,
+    provider: Provider,
+    entry: ProviderEntry,
+) -> Result<(), String> {
+    settings.set_entry(provider, entry);
+    settings.default_provider = Some(provider.to_string());
+    config::save(settings)?;
+    crate::hud::sync_from_config(settings);
+    Ok(())
 }
 
 fn print_status() -> i32 {
+    let settings = config::load();
     println!("OpenTerm provider status\n");
     for provider in Provider::ALL {
-        println!("  {provider:<10} {}", describe(provider));
+        println!("  {provider:<12} {}", describe(provider, &settings));
     }
     if let Ok(path) = config::config_path() {
         println!("\nConfig: {}", path.display());
     }
-    if let Some(default) = config::load().default_provider.as_deref() {
+    if let Some(default) = settings.default_provider.as_deref() {
         println!("Default provider: {default}");
     }
     println!("\nRun ai-connect to connect with arrow-key selection.");
-    crate::hud::sync_from_config();
+    crate::hud::sync_from_config(&settings);
     0
 }
 
-fn describe(provider: Provider) -> String {
-    if provider == Provider::Codex {
-        if codex_session_ready() {
-            return "connected (Codex CLI session)".to_owned();
+fn describe(provider: Provider, settings: &ProviderSettings) -> String {
+    if provider.is_cli() {
+        if cli_session_ready(provider) {
+            return format!("connected ({provider} CLI session)");
         }
-        return "not connected — run codex login".to_owned();
+        return format!("not connected — run {}", login_hint(provider));
     }
+    let model = settings
+        .model(provider)
+        .map(|value| format!(", model {value}"))
+        .unwrap_or_default();
     if provider.is_local() {
-        return describe_local(provider);
-    }
-    describe_api(provider)
-}
-
-fn describe_local(provider: Provider) -> String {
-    let host = crate::providers::local_base_url(provider);
-    if config::is_stored(provider) {
-        let model = config::stored_model(provider)
-            .map(|value| format!(", model {value}"))
-            .unwrap_or_default();
-        return format!("connected (local at {host}{model})");
-    }
-    format!("not connected — start {provider} at {host}, then run ai-connect")
-}
-
-fn describe_api(provider: Provider) -> String {
-    if let Some(env) = config::env_var(provider) {
-        if std::env::var_os(env).is_some() {
-            return "configured (environment)".to_owned();
+        let host = crate::providers::local_base_url(provider);
+        if settings.is_stored(provider) {
+            return format!("connected (local at {host}{model})");
         }
+        return format!("not connected — start {provider} at {host}, then run ai-connect");
     }
-    if config::is_stored(provider) {
-        let model = config::stored_model(provider)
-            .map(|value| format!(", model {value}"))
-            .unwrap_or_default();
+    describe_api(provider, settings, &model)
+}
+
+fn describe_api(provider: Provider, settings: &ProviderSettings, model: &str) -> String {
+    let from_env = config::env_var(provider).is_some_and(|env| std::env::var_os(env).is_some());
+    if from_env {
+        return format!("configured (environment{model})");
+    }
+    if settings.is_stored(provider) {
         return format!("connected (openterm{model})");
     }
     "not connected — run ai-connect".to_owned()
 }
 
-fn codex_session_ready() -> bool {
-    Command::new("codex")
-        .args(["login", "status"])
-        .output()
-        .is_ok_and(|output| output.status.success())
+fn cli_session_ready(provider: Provider) -> bool {
+    match provider {
+        Provider::ClaudeCode => crate::providers::claude_code_ready(),
+        _ => Command::new("codex")
+            .args(["login", "status"])
+            .output()
+            .is_ok_and(|output| output.status.success()),
+    }
+}
+
+fn login_hint(provider: Provider) -> &'static str {
+    match provider {
+        Provider::ClaudeCode => "claude auth login",
+        _ => "codex login",
+    }
 }
 
 fn print_help() -> i32 {

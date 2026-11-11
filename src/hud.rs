@@ -1,4 +1,4 @@
-use crate::providers::config;
+use crate::providers::{Endpoint, Provider, config};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -25,9 +25,10 @@ pub struct Hud {
     pub live: bool,
 }
 
+/// Token counters only; provider/model fields are synced by `ai-connect`, so
+/// the per-request hot path never re-reads provider settings.
 pub fn record_usage(input: u64, output: u64, cached: u64) {
     let mut hud = load();
-    sync_fields(&mut hud);
     hud.tokens_in = hud.tokens_in.saturating_add(input);
     hud.tokens_out = hud.tokens_out.saturating_add(output);
     hud.tokens_cached = hud.tokens_cached.saturating_add(cached);
@@ -37,14 +38,13 @@ pub fn record_usage(input: u64, output: u64, cached: u64) {
 
 pub fn record_cache_hit() {
     let mut hud = load();
-    sync_fields(&mut hud);
     hud.cache_hits = hud.cache_hits.saturating_add(1);
     save(&hud);
 }
 
-pub fn sync_from_config() {
+pub fn sync_from_config(settings: &config::ProviderSettings) {
     let mut hud = load();
-    sync_fields(&mut hud);
+    sync_fields(&mut hud, settings);
     save(&hud);
 }
 
@@ -82,24 +82,25 @@ pub fn compact(value: u64) -> String {
     format!("{}.{}M", tenths / 10, tenths % 10)
 }
 
-fn sync_fields(hud: &mut Hud) {
-    let settings = config::load();
-    let Some(name) = settings.default_provider.as_deref() else {
+fn sync_fields(hud: &mut Hud, settings: &config::ProviderSettings) {
+    if settings.default_provider.is_none() {
         return;
-    };
-    name.clone_into(&mut hud.provider);
-    if let Ok(provider) = name.parse() {
-        hud.model = config::stored_model(provider).unwrap_or_default();
     }
-    hud.host = host_label(&settings);
+    let provider = settings.default_provider();
+    hud.provider = provider.to_string();
+    settings
+        .model(provider)
+        .unwrap_or_default()
+        .clone_into(&mut hud.model);
+    hud.host = host_label(provider, settings);
 }
 
-fn host_label(settings: &config::ProviderSettings) -> String {
-    settings
-        .openai
-        .as_ref()
-        .and_then(|entry| entry.base_url.as_deref())
-        .map_or_else(|| "api.openai.com".to_owned(), strip_scheme)
+fn host_label(provider: Provider, settings: &config::ProviderSettings) -> String {
+    let endpoint = Endpoint::resolve(provider, settings);
+    if endpoint.base_url.is_empty() {
+        return provider.to_string();
+    }
+    strip_scheme(&endpoint.base_url)
 }
 
 fn strip_scheme(url: &str) -> String {

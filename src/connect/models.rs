@@ -1,18 +1,17 @@
-use crate::providers::{Provider, http_agent, read_json};
+use crate::providers::{Endpoint, Provider, http_agent, read_json};
+
+const ANTHROPIC_VERSION: &str = "2023-06-01";
 use serde_json::Value;
 
-pub fn list_for_provider(provider: Provider, api_key: &str) -> Vec<String> {
-    let models = match provider {
-        Provider::OpenAi => fetch_openai(api_key),
-        Provider::Claude => fetch_claude(api_key),
-        Provider::Mistral => fetch_mistral(api_key),
-        Provider::Ollama | Provider::LmStudio => crate::providers::local_models(provider),
-        Provider::Codex => Vec::new(),
-    };
+pub fn list_for_provider(provider: Provider, endpoint: &Endpoint) -> Vec<String> {
     if provider.is_local() {
         // Only the models actually pulled locally can answer, so never guess.
-        return models;
+        return crate::providers::local_models(provider);
     }
+    if provider.is_cli() {
+        return Vec::new();
+    }
+    let models = fetch(provider, endpoint).unwrap_or_default();
     if models.is_empty() {
         fallback_for(provider)
     } else {
@@ -20,47 +19,28 @@ pub fn list_for_provider(provider: Provider, api_key: &str) -> Vec<String> {
     }
 }
 
-fn fetch_openai(api_key: &str) -> Vec<String> {
-    let Ok(mut response) = http_agent()
-        .get(crate::providers::openai_url("v1/models"))
-        .header("Authorization", format!("Bearer {api_key}"))
-        .call()
-    else {
-        return Vec::new();
+fn fetch(provider: Provider, endpoint: &Endpoint) -> Option<Vec<String>> {
+    let key = endpoint.optional_api_key().unwrap_or_default();
+    let request = match provider {
+        Provider::Claude => http_agent()
+            .get(endpoint.url("v1/models"))
+            .header("x-api-key", key)
+            .header("anthropic-version", ANTHROPIC_VERSION),
+        Provider::OpenAi => http_agent()
+            .get(endpoint.url("v1/models"))
+            .header("Authorization", format!("Bearer {key}")),
+        _ => http_agent()
+            .get(endpoint.url("models"))
+            .header("Authorization", format!("Bearer {key}")),
     };
-    read_json(Provider::OpenAi, &mut response)
-        .ok()
-        .map(|value| sort_models(&value, "created"))
-        .unwrap_or_default()
-}
-
-fn fetch_claude(api_key: &str) -> Vec<String> {
-    let Ok(mut response) = http_agent()
-        .get("https://api.anthropic.com/v1/models")
-        .header("x-api-key", api_key)
-        .header("anthropic-version", "2023-06-01")
-        .call()
-    else {
-        return Vec::new();
+    let mut response = request.call().ok()?;
+    let value = read_json(provider, &mut response).ok()?;
+    let created = if provider == Provider::Claude {
+        "created_at"
+    } else {
+        "created"
     };
-    read_json(Provider::Claude, &mut response)
-        .ok()
-        .map(|value| sort_models(&value, "created_at"))
-        .unwrap_or_default()
-}
-
-fn fetch_mistral(api_key: &str) -> Vec<String> {
-    let Ok(mut response) = http_agent()
-        .get("https://api.mistral.ai/v1/models")
-        .header("Authorization", format!("Bearer {api_key}"))
-        .call()
-    else {
-        return Vec::new();
-    };
-    read_json(Provider::Mistral, &mut response)
-        .ok()
-        .map(|value| sort_models(&value, "created"))
-        .unwrap_or_default()
+    Some(sort_models(&value, created))
 }
 
 fn sort_models(value: &Value, created_field: &str) -> Vec<String> {
@@ -101,7 +81,7 @@ fn fallback_for(provider: Provider) -> Vec<String> {
             "mistral-small-latest".into(),
             "codestral-latest".into(),
         ],
-        Provider::Codex | Provider::Ollama | Provider::LmStudio => Vec::new(),
+        _ => Vec::new(),
     }
 }
 

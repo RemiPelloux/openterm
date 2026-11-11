@@ -1,29 +1,38 @@
 mod ask_prompt;
+mod chat;
 mod claude;
+mod claude_code;
 mod codex;
+pub mod compat;
 pub mod config;
+mod endpoint;
 mod local;
-mod mistral;
 mod openai;
 mod openai_stream;
 
+pub use claude_code::session_ready as claude_code_ready;
+pub use compat::Compat;
+pub use endpoint::Endpoint;
 pub use local::base_url as local_base_url;
 pub use local::models as local_models;
-pub(crate) use openai::url as openai_url;
 
+use config::ProviderSettings;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use std::sync::OnceLock;
 
 const MAX_RESPONSE_BYTES: u64 = 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Provider {
     Codex,
+    ClaudeCode,
     OpenAi,
     Claude,
     Mistral,
     Ollama,
     LmStudio,
+    Compat(Compat),
 }
 
 #[derive(Debug)]
@@ -31,25 +40,51 @@ pub struct AskRequest {
     pub provider: Provider,
     pub model: Option<String>,
     pub prompt: String,
+    pub endpoint: Endpoint,
+}
+
+impl AskRequest {
+    /// Resolves model, origin, and credential from one settings load.
+    pub fn build(
+        settings: &ProviderSettings,
+        provider: Provider,
+        model: Option<String>,
+        prompt: String,
+    ) -> Result<Self, String> {
+        Ok(Self {
+            provider,
+            model: resolve_model(settings, provider, model)?,
+            prompt,
+            endpoint: Endpoint::resolve(provider, settings),
+        })
+    }
 }
 
 impl Provider {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 14] = [
         Self::Codex,
+        Self::ClaudeCode,
         Self::OpenAi,
         Self::Claude,
         Self::Mistral,
         Self::Ollama,
         Self::LmStudio,
+        Self::Compat(Compat::OpenRouter),
+        Self::Compat(Compat::Groq),
+        Self::Compat(Compat::DeepSeek),
+        Self::Compat(Compat::Xai),
+        Self::Compat(Compat::Gemini),
+        Self::Compat(Compat::Together),
+        Self::Compat(Compat::Custom),
     ];
 
     pub fn ask(self, request: &AskRequest) -> Result<String, String> {
         match self {
             Self::Codex => codex::ask(request),
+            Self::ClaudeCode => claude_code::ask(request),
             Self::OpenAi => openai::ask(request),
             Self::Claude => claude::ask(request),
-            Self::Mistral => mistral::ask(request),
-            Self::Ollama | Self::LmStudio => local::ask(self, request),
+            Self::Mistral | Self::Ollama | Self::LmStudio | Self::Compat(_) => chat::ask(request),
         }
     }
 
@@ -68,14 +103,20 @@ impl Provider {
         Ok(answer)
     }
 
+    /// Delegated CLIs pick their own default model; everything else needs one.
     pub const fn requires_model(self) -> bool {
-        !matches!(self, Self::Codex)
+        !self.is_cli()
     }
 
-    /// Hosted providers authenticate with a key; Codex delegates to its CLI and
-    /// locally hosted runtimes need no credential at all.
+    pub const fn is_cli(self) -> bool {
+        matches!(self, Self::Codex | Self::ClaudeCode)
+    }
+
     pub const fn uses_api_key(self) -> bool {
-        matches!(self, Self::OpenAi | Self::Claude | Self::Mistral)
+        matches!(
+            self,
+            Self::OpenAi | Self::Claude | Self::Mistral | Self::Compat(_)
+        )
     }
 
     pub const fn is_local(self) -> bool {
@@ -87,13 +128,15 @@ impl Display for Provider {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         let name = match self {
             Self::Codex => "codex",
+            Self::ClaudeCode => "claude-code",
             Self::OpenAi => "openai",
             Self::Claude => "claude",
             Self::Mistral => "mistral",
             Self::Ollama => "ollama",
             Self::LmStudio => "lmstudio",
+            Self::Compat(preset) => preset.name(),
         };
-        formatter.write_str(name)
+        formatter.pad(name)
     }
 }
 
@@ -102,13 +145,16 @@ impl FromStr for Provider {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "codex" => Ok(Self::Codex),
+            "codex" | "chatgpt" => Ok(Self::Codex),
+            "claude-code" | "claudecode" => Ok(Self::ClaudeCode),
             "openai" => Ok(Self::OpenAi),
             "claude" | "anthropic" => Ok(Self::Claude),
             "mistral" => Ok(Self::Mistral),
             "ollama" => Ok(Self::Ollama),
             "lmstudio" | "lm-studio" => Ok(Self::LmStudio),
-            _ => Err(format!("unknown provider '{value}'")),
+            other => Compat::from_name(other)
+                .map(Self::Compat)
+                .ok_or_else(|| format!("unknown provider '{value}'")),
         }
     }
 }
@@ -120,40 +166,35 @@ pub(super) fn model(request: &AskRequest) -> Result<&str, String> {
         .ok_or_else(|| format!("provider '{}' requires --model", request.provider))
 }
 
-pub fn resolve_model(
+fn resolve_model(
+    settings: &ProviderSettings,
     provider: Provider,
     explicit: Option<String>,
 ) -> Result<Option<String>, String> {
-    if explicit.is_some() {
-        return Ok(explicit);
+    if let Some(model) = explicit.or_else(|| settings.model(provider).map(str::to_owned)) {
+        return Ok(Some(model));
     }
     if !provider.requires_model() {
         return Ok(None);
     }
-    config::stored_model(provider)
-        .map(Some)
-        .ok_or_else(|| format!("provider '{provider}' requires --model (run ai-connect)"))
-}
-
-pub(super) fn api_key(variable: &str) -> Result<String, String> {
-    let provider = match variable {
-        "OPENAI_API_KEY" => Provider::OpenAi,
-        "ANTHROPIC_API_KEY" => Provider::Claude,
-        "MISTRAL_API_KEY" => Provider::Mistral,
-        other => return Err(format!("{other} is not configured")),
-    };
-    config::resolve_api_key(provider)
+    Err(format!(
+        "provider '{provider}' requires --model (run ai-connect)"
+    ))
 }
 
 pub(super) fn http_error(provider: Provider, error: &ureq::Error) -> String {
     format!("{provider} request failed: {error}")
 }
 
-pub(crate) fn http_agent() -> ureq::Agent {
-    ureq::Agent::config_builder()
-        .max_redirects(0)
-        .build()
-        .into()
+/// One process-wide agent so repeated calls reuse pooled TLS connections.
+pub(crate) fn http_agent() -> &'static ureq::Agent {
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT.get_or_init(|| {
+        ureq::Agent::config_builder()
+            .max_redirects(0)
+            .build()
+            .into()
+    })
 }
 
 pub(crate) fn read_json(
@@ -176,7 +217,7 @@ pub(super) fn non_empty(provider: Provider, text: String) -> Result<String, Stri
 
 #[cfg(test)]
 mod tests {
-    use super::Provider;
+    use super::{AskRequest, Provider, config::ProviderSettings};
 
     #[test]
     fn provider_names_roundtrip() {
@@ -186,5 +227,14 @@ mod tests {
         }
         assert_eq!("lm-studio".parse::<Provider>().unwrap(), Provider::LmStudio);
         assert_eq!("anthropic".parse::<Provider>().unwrap(), Provider::Claude);
+    }
+
+    #[test]
+    fn cli_providers_need_no_model() {
+        let settings = ProviderSettings::default();
+        let request = AskRequest::build(&settings, Provider::ClaudeCode, None, "hi".into());
+        assert_eq!(request.expect("request").model, None);
+        let missing = AskRequest::build(&settings, Provider::Mistral, None, "hi".into());
+        assert!(missing.unwrap_err().contains("requires --model"));
     }
 }

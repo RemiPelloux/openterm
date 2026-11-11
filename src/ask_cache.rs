@@ -93,6 +93,8 @@ fn cache_key(request: &AskRequest) -> String {
     digest.update([0]);
     digest.update(request.model.as_deref().unwrap_or_default().as_bytes());
     digest.update([0]);
+    digest.update(request.endpoint.base_url.as_bytes());
+    digest.update([0]);
     digest.update(request.prompt.as_bytes());
     hex::encode(digest.finalize())
 }
@@ -145,7 +147,7 @@ fn now_secs() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::{CacheEntry, CacheFile, load, lookup_in, save, store_in};
-    use crate::providers::{AskRequest, Provider};
+    use crate::providers::{AskRequest, Endpoint, Provider};
     use std::path::PathBuf;
 
     fn request(prompt: &str) -> AskRequest {
@@ -153,6 +155,7 @@ mod tests {
             provider: Provider::OpenAi,
             model: Some("gpt-test".to_owned()),
             prompt: prompt.to_owned(),
+            endpoint: Endpoint::default(),
         }
     }
 
@@ -173,6 +176,7 @@ mod tests {
             provider: Provider::Claude,
             model: Some("gpt-test".to_owned()),
             prompt: "disk?".to_owned(),
+            endpoint: Endpoint::default(),
         };
         assert_eq!(lookup_in(&path, &other), None);
         let _ = std::fs::remove_file(path);

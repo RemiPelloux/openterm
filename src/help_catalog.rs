@@ -18,7 +18,7 @@ const AGENT: &[Entry] = &[
     Entry {
         name: "ai-ask",
         summary: "Inspect files, answer in markdown, apply edits via OpenCode",
-        usage: "ai-ask [--provider codex|openai|claude|mistral|ollama|lmstudio] [--model MODEL] [--workspace] [--result REF] QUESTION",
+        usage: "ai-ask [--provider PROVIDER] [--model MODEL] [--workspace] [--result REF] QUESTION",
     },
     Entry {
         name: "ai-chat",

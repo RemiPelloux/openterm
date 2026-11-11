@@ -98,7 +98,7 @@ fn run_interactive() -> i32 {
     if !io::stdin().is_terminal() {
         return print_error("ai-chat requires an interactive terminal", 2);
     }
-    crate::hud::sync_from_config();
+    crate::hud::sync_from_config(&crate::providers::config::load());
     print_banner();
     match run_loop() {
         Ok(()) => 0,

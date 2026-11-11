@@ -1,5 +1,5 @@
 use super::ask_prompt::INSTRUCTIONS;
-use super::{AskRequest, Provider, api_key, http_agent, http_error, model, non_empty, read_json};
+use super::{AskRequest, Provider, http_agent, http_error, model, non_empty, read_json};
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
@@ -12,7 +12,7 @@ pub fn ask_stream(request: &AskRequest, on_delta: &mut dyn FnMut(&str)) -> Resul
 }
 
 fn start_stream(request: &AskRequest) -> Result<ureq::http::Response<ureq::Body>, String> {
-    let api_key = api_key("OPENAI_API_KEY")?;
+    let api_key = request.endpoint.api_key(Provider::OpenAi)?;
     let body = json!({
         "model": model(request)?,
         "instructions": INSTRUCTIONS,
@@ -21,7 +21,7 @@ fn start_stream(request: &AskRequest) -> Result<ureq::http::Response<ureq::Body>
         "stream": true,
     });
     http_agent()
-        .post(super::openai::url("v1/responses"))
+        .post(request.endpoint.url("v1/responses"))
         .header("Authorization", format!("Bearer {api_key}"))
         .header("Accept", "text/event-stream")
         .send_json(body)

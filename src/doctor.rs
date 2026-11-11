@@ -6,12 +6,6 @@ const REQUIRED_COMMANDS: [(&str, &[&str]); 3] = [
     ("rtk", &["--version"]),
     ("codex", &["--version"]),
 ];
-const API_PROVIDERS: [(crate::providers::Provider, &str); 3] = [
-    (crate::providers::Provider::OpenAi, "OPENAI_API_KEY"),
-    (crate::providers::Provider::Claude, "ANTHROPIC_API_KEY"),
-    (crate::providers::Provider::Mistral, "MISTRAL_API_KEY"),
-];
-
 pub fn run() -> i32 {
     println!("OpenTerm doctor");
     let mut healthy = true;
@@ -37,8 +31,12 @@ pub fn run() -> i32 {
 }
 
 fn print_credentials() {
-    for (provider, variable) in API_PROVIDERS {
-        let state = credential_state(provider, variable);
+    let settings = config::load();
+    for provider in crate::providers::Provider::ALL {
+        let Some(variable) = config::env_var(provider) else {
+            continue;
+        };
+        let state = credential_state(&settings, provider, variable);
         println!("  api {provider}: {state} ({variable})");
     }
 }
@@ -59,11 +57,15 @@ fn print_local_runtimes() {
     }
 }
 
-fn credential_state(provider: crate::providers::Provider, variable: &str) -> &'static str {
+fn credential_state(
+    settings: &config::ProviderSettings,
+    provider: crate::providers::Provider,
+    variable: &str,
+) -> &'static str {
     if std::env::var_os(variable).is_some() {
         return "configured (env)";
     }
-    if config::is_stored(provider) {
+    if settings.is_stored(provider) {
         return "configured (openterm)";
     }
     "not configured"

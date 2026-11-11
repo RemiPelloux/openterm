@@ -1,5 +1,4 @@
-use super::{AskRequest, Provider, http_agent, model, non_empty, read_json};
-use serde_json::{Value, json};
+use super::{Provider, http_agent, read_json};
 
 const OLLAMA_DEFAULT: &str = "http://127.0.0.1:11434";
 const LM_STUDIO_DEFAULT: &str = "http://127.0.0.1:1234";
@@ -10,10 +9,7 @@ const LM_STUDIO_DEFAULT: &str = "http://127.0.0.1:1234";
 pub fn base_url(provider: Provider) -> String {
     let (variable, default) = match provider {
         Provider::LmStudio => ("LMSTUDIO_HOST", LM_STUDIO_DEFAULT),
-        Provider::Ollama => ("OLLAMA_HOST", OLLAMA_DEFAULT),
-        Provider::Codex | Provider::OpenAi | Provider::Claude | Provider::Mistral => {
-            ("OLLAMA_HOST", OLLAMA_DEFAULT)
-        }
+        _ => ("OLLAMA_HOST", OLLAMA_DEFAULT),
     };
     std::env::var(variable).map_or_else(|_| default.to_owned(), |value| normalize(&value))
 }
@@ -24,26 +20,6 @@ fn normalize(value: &str) -> String {
         return trimmed.to_owned();
     }
     format!("http://{trimmed}")
-}
-
-/// Both runtimes speak the OpenAI-compatible chat-completions shape and neither
-/// takes an API key, so one request body serves both.
-pub fn ask(provider: Provider, request: &AskRequest) -> Result<String, String> {
-    let base = base_url(provider);
-    let body = json!({
-        "model": model(request)?,
-        "messages": [
-            {"role": "system", "content": super::ask_prompt::INSTRUCTIONS},
-            {"role": "user", "content": request.prompt},
-        ],
-        "stream": false,
-    });
-    let mut response = http_agent()
-        .post(format!("{base}/v1/chat/completions"))
-        .send_json(body)
-        .map_err(|error| unreachable(provider, &base, &error))?;
-    let value = read_json(provider, &mut response)?;
-    parse(provider, &value)
 }
 
 /// Model ids the runtime currently has pulled. Empty means it is not running.
@@ -67,40 +43,9 @@ pub fn models(provider: Provider) -> Vec<String> {
     ids
 }
 
-fn unreachable(provider: Provider, base: &str, error: &ureq::Error) -> String {
-    format!("{provider} is not reachable at {base} ({error}); start it and retry")
-}
-
-fn parse(provider: Provider, value: &Value) -> Result<String, String> {
-    let text = value["choices"][0]["message"]["content"]
-        .as_str()
-        .unwrap_or_default()
-        .to_owned();
-    non_empty(provider, text)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{normalize, parse};
-    use crate::providers::Provider;
-    use serde_json::json;
-
-    #[test]
-    fn parses_chat_completion_text() {
-        let value = json!({"choices": [{"message": {"content": "Use lsof -i."}}]});
-        assert_eq!(
-            parse(Provider::Ollama, &value).as_deref(),
-            Ok("Use lsof -i.")
-        );
-    }
-
-    #[test]
-    fn rejects_empty_response() {
-        assert_eq!(
-            parse(Provider::Ollama, &json!({})).unwrap_err(),
-            "ollama returned no text"
-        );
-    }
+    use super::normalize;
 
     #[test]
     fn bare_host_gains_a_scheme() {

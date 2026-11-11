@@ -5,7 +5,8 @@ use std::io::Write;
 const HELP: &str =
     "Usage: ai-ask [--provider PROVIDER] [--model MODEL] [--workspace] [--result REF] <QUESTION>
 
-Providers: openai, claude, mistral, ollama, lmstudio, or codex (fallback)
+Providers: codex, claude-code, openai, claude, mistral, ollama, lmstudio,
+           openrouter, groq, deepseek, xai, gemini, together, custom
 
 ai-ask inspects cwd, Git, and shell startup files, then answers in markdown.
 If the task needs edits, it writes an OpenCode prompt and applies it with
@@ -95,7 +96,7 @@ pub fn ask_text(question: &str, workspace: bool) -> Result<String, String> {
 }
 
 fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, String> {
-    let mut provider = crate::providers::config::default_provider();
+    let mut provider = None;
     let mut model = None;
     let mut workspace = true;
     let mut result = None;
@@ -105,7 +106,7 @@ fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, Strin
     while let Some(argument) = args.next() {
         match argument.as_str() {
             "--help" | "-h" => return Ok(None),
-            "--provider" => provider = parse_provider(args.next())?,
+            "--provider" => provider = Some(parse_provider(args.next())?),
             "--model" => model = Some(required_value("--model", args.next())?),
             "--workspace" => workspace = true,
             "--result" => result = Some(required_value("--result", args.next())?),
@@ -124,7 +125,7 @@ fn parse(args: impl Iterator<Item = String>) -> Result<Option<AskRequest>, Strin
 }
 
 struct AskOptions {
-    provider: Provider,
+    provider: Option<Provider>,
     model: Option<String>,
     workspace: bool,
     result: Option<String>,
@@ -132,17 +133,16 @@ struct AskOptions {
 }
 
 fn build_request(options: AskOptions) -> Result<Option<AskRequest>, String> {
+    let settings = crate::providers::config::load();
+    let provider = options
+        .provider
+        .unwrap_or_else(|| settings.default_provider());
     if options.prompt.is_empty() {
         return Err("a question is required".to_owned());
     }
-    let model = crate::providers::resolve_model(options.provider, options.model)?;
     let question = options.prompt.join(" ");
     let full_prompt = attach_context(options.workspace, options.result, &question)?;
-    Ok(Some(AskRequest {
-        provider: options.provider,
-        model,
-        prompt: full_prompt,
-    }))
+    AskRequest::build(&settings, provider, options.model, full_prompt).map(Some)
 }
 
 fn attach_context(

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -6,24 +7,20 @@ use std::path::{Path, PathBuf};
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
 
-use super::Provider;
+mod settings;
+
+pub use settings::env_var;
 
 const FILE_NAME: &str = "providers.json";
 
+/// On-disk provider settings. Each provider's entry sits under its own name
+/// (`"openai"`, `"groq"`, ...), which keeps older files readable unchanged.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProviderSettings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_provider: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub openai: Option<ProviderEntry>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub claude: Option<ProviderEntry>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mistral: Option<ProviderEntry>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ollama: Option<ProviderEntry>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub lmstudio: Option<ProviderEntry>,
+    #[serde(flatten)]
+    pub entries: BTreeMap<String, ProviderEntry>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -83,89 +80,6 @@ pub fn save(settings: &ProviderSettings) -> Result<(), String> {
     )
 }
 
-pub fn stored_model(provider: Provider) -> Option<String> {
-    if provider == Provider::Codex {
-        return None;
-    }
-    entry(provider, &load())?.model.clone()
-}
-
-pub fn default_provider() -> Provider {
-    parse_default(load().default_provider.as_deref())
-}
-
-pub fn parse_default(name: Option<&str>) -> Provider {
-    name.and_then(|value| value.parse().ok())
-        .unwrap_or(Provider::Codex)
-}
-
-pub fn stored_base_url(provider: Provider) -> Option<String> {
-    entry(provider, &load())?.base_url.clone()
-}
-
-pub fn is_stored(provider: Provider) -> bool {
-    if provider == Provider::Codex {
-        return false;
-    }
-    let settings = load();
-    let Some(entry) = entry(provider, &settings) else {
-        return false;
-    };
-    // A local runtime is connected once a model is chosen; there is no key.
-    if provider.is_local() {
-        return entry.model.is_some();
-    }
-    !entry.api_key.is_empty()
-}
-
-pub fn env_var(provider: Provider) -> Option<&'static str> {
-    match provider {
-        Provider::OpenAi => Some("OPENAI_API_KEY"),
-        Provider::Claude => Some("ANTHROPIC_API_KEY"),
-        Provider::Mistral => Some("MISTRAL_API_KEY"),
-        Provider::Codex | Provider::Ollama | Provider::LmStudio => None,
-    }
-}
-
-/// Records a connected provider so `ai-ask` can resolve its model later.
-pub fn store_entry(settings: &mut ProviderSettings, provider: Provider, entry: ProviderEntry) {
-    match provider {
-        Provider::OpenAi => settings.openai = Some(entry),
-        Provider::Claude => settings.claude = Some(entry),
-        Provider::Mistral => settings.mistral = Some(entry),
-        Provider::Ollama => settings.ollama = Some(entry),
-        Provider::LmStudio => settings.lmstudio = Some(entry),
-        Provider::Codex => {}
-    }
-}
-
-pub fn resolve_api_key(provider: Provider) -> Result<String, String> {
-    if let Some(variable) = env_var(provider) {
-        if let Ok(value) = std::env::var(variable) {
-            return Ok(value);
-        }
-        let settings = load();
-        let entry = entry(provider, &settings)
-            .ok_or_else(|| format!("{variable} is not configured (run ai-connect)"))?;
-        if entry.api_key.is_empty() {
-            return Err(format!("{variable} is not configured (run ai-connect)"));
-        }
-        return Ok(entry.api_key.clone());
-    }
-    Err(format!("{provider} does not use an API key"))
-}
-
-fn entry(provider: Provider, settings: &ProviderSettings) -> Option<&ProviderEntry> {
-    match provider {
-        Provider::OpenAi => settings.openai.as_ref(),
-        Provider::Claude => settings.claude.as_ref(),
-        Provider::Mistral => settings.mistral.as_ref(),
-        Provider::Ollama => settings.ollama.as_ref(),
-        Provider::LmStudio => settings.lmstudio.as_ref(),
-        Provider::Codex => None,
-    }
-}
-
 fn load_from(path: &Path) -> Result<ProviderSettings, String> {
     let text = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
     serde_json::from_str(&text).map_err(|error| error.to_string())
@@ -220,15 +134,18 @@ mod tests {
     fn save_and_load_roundtrip() {
         let base = temp_base("roundtrip");
         let _ = std::fs::remove_dir_all(&base);
-        let settings = ProviderSettings {
+        let mut settings = ProviderSettings {
             default_provider: Some("openai".to_owned()),
-            openai: Some(super::ProviderEntry {
-                api_key: "sk-test".to_owned(),
-                model: Some("gpt-4o-mini".to_owned()),
-                base_url: Some("https://llm.example.com".to_owned()),
-            }),
             ..ProviderSettings::default()
         };
+        settings.set_entry(
+            crate::providers::Provider::OpenAi,
+            super::ProviderEntry {
+                api_key: "sk-test".to_owned(),
+                model: Some("gpt-test".to_owned()),
+                base_url: Some("https://llm.example.com".to_owned()),
+            },
+        );
         save_to_base(&base, &settings).expect("save");
         let loaded = load_from_base(&base);
         assert_eq!(loaded, settings);
@@ -250,6 +167,16 @@ mod tests {
     fn assert_private(_path: &std::path::Path) {}
 
     #[test]
+    fn legacy_file_layout_still_loads() {
+        let text = r#"{"default_provider":"claude","claude":{"api_key":"k","model":"m"}}"#;
+        let settings: ProviderSettings = serde_json::from_str(text).expect("parse");
+        assert_eq!(
+            settings.model(crate::providers::Provider::Claude),
+            Some("m")
+        );
+    }
+
+    #[test]
     fn config_dir_uses_home_when_unset() {
         let dir = config_dir().expect("dir");
         assert!(dir.ends_with(".config/openterm") || dir.ends_with("openterm"));
@@ -260,8 +187,7 @@ mod tests {
         let base = temp_base("local");
         let _ = std::fs::remove_dir_all(&base);
         let mut settings = ProviderSettings::default();
-        super::store_entry(
-            &mut settings,
+        settings.set_entry(
             crate::providers::Provider::Ollama,
             super::ProviderEntry {
                 api_key: String::new(),
@@ -271,30 +197,15 @@ mod tests {
         );
         save_to_base(&base, &settings).expect("save");
         let loaded = load_from_base(&base);
-        let model = loaded
-            .ollama
-            .as_ref()
-            .and_then(|entry| entry.model.as_deref());
-        assert_eq!(model, Some("llama3.2"));
-        assert!(loaded.ollama.is_some_and(|entry| entry.api_key.is_empty()));
+        let provider = crate::providers::Provider::Ollama;
+        assert_eq!(loaded.model(provider), Some("llama3.2"));
+        assert!(
+            loaded
+                .entry(provider)
+                .is_some_and(|entry| entry.api_key.is_empty())
+        );
         let text = std::fs::read_to_string(base.join(super::FILE_NAME)).expect("read");
         assert!(!text.contains("api_key"));
         let _ = std::fs::remove_dir_all(base);
-    }
-
-    #[test]
-    fn parse_default_falls_back_to_codex() {
-        assert_eq!(
-            super::parse_default(None),
-            crate::providers::Provider::Codex
-        );
-        assert_eq!(
-            super::parse_default(Some("openai")),
-            crate::providers::Provider::OpenAi
-        );
-        assert_eq!(
-            super::parse_default(Some("unknown")),
-            crate::providers::Provider::Codex
-        );
     }
 }
