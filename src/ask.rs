@@ -27,6 +27,7 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
         Ok(None) => return print_help(),
         Err(error) => return print_error(&error, 2),
     };
+    crate::models::refresh_if_stale(&request);
     answer_request(&request)
 }
 

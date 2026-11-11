@@ -132,6 +132,17 @@ impl Provider {
         matches!(self, Self::Ollama | Self::LmStudio)
     }
 
+    /// Wire name of the provider family in `ai-models --json`.
+    pub const fn kind(self) -> &'static str {
+        if self.is_cli() {
+            "cli"
+        } else if self.is_local() {
+            "local"
+        } else {
+            "api"
+        }
+    }
+
     pub const fn label(self) -> &'static str {
         match self {
             Self::Codex => "ChatGPT subscription via Codex CLI (codex login)",

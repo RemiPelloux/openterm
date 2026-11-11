@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
-const CORE_COMMANDS: [&str; 24] = [
+const CORE_COMMANDS: [&str; 25] = [
     "ai-help",
     "ai-ask",
     "ai-chat",
@@ -9,6 +9,7 @@ const CORE_COMMANDS: [&str; 24] = [
     "ai-panel",
     "ai-workspace",
     "ai-connect",
+    "ai-models",
     "ai-doctor",
     "ai-version",
     "ai-result",
@@ -41,6 +42,7 @@ pub fn run(program: &OsStr, args: impl IntoIterator<Item = OsString>) -> i32 {
         "ai-panel" => crate::panel_command::run(args),
         "ai-workspace" => crate::workspace::run(args),
         "ai-connect" => crate::connect::run(args),
+        "ai-models" => crate::models::run(args),
         "ai-doctor" => crate::doctor::run(),
         "ai-version" => print_version(),
         "ai-context" => crate::git_context::run(args),

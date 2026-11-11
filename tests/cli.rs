@@ -263,6 +263,28 @@ fn parse_result_id(stderr: &[u8]) -> String {
         .to_owned()
 }
 
+#[test]
+fn ai_models_json_lists_every_provider_without_keys() {
+    let base = test_root();
+    std::fs::create_dir_all(&base).expect("temp dir");
+    let config = r#"{"default_provider":"groq","groq":{"api_key":"sk-hidden","model":"m"}}"#;
+    std::fs::write(base.join("providers.json"), config).expect("config");
+    let output = openterm_as("ai-models")
+        .arg("--json")
+        .env("OPENTERM_CONFIG_DIR", &base)
+        .env("OPENTERM_DATA_DIR", &base)
+        .output()
+        .expect("run ai-models");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let _ = std::fs::remove_dir_all(&base);
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("json");
+    assert_eq!(json["default_provider"], "groq");
+    assert_eq!(json["providers"].as_array().expect("providers").len(), 14);
+    assert!(!stdout.contains("sk-hidden"));
+}
+
 fn test_root() -> PathBuf {
     let mut bytes = [0_u8; 8];
     getrandom::fill(&mut bytes).expect("random test suffix");

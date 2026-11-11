@@ -31,6 +31,11 @@ const AGENT: &[Entry] = &[
         usage: "ai-connect [--status]",
     },
     Entry {
+        name: "ai-models",
+        summary: "List and refresh each provider's discovered models",
+        usage: "ai-models [PROVIDER] [--refresh] [--json] [--quiet]",
+    },
+    Entry {
         name: "ai-explain",
         summary: "Explain stored command output with your model",
         usage: "ai-explain [--last|--result REF] [--provider PROVIDER] [--model MODEL] [QUESTION]",
