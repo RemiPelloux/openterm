@@ -36,7 +36,7 @@ impl Compat {
         self.spec().name
     }
 
-    pub fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         self.spec().label
     }
 

@@ -1,10 +1,10 @@
-use crate::providers::{Compat, Provider};
+use crate::providers::Provider;
 use dialoguer::{Input, Select, theme::ColorfulTheme};
 
 pub fn select_provider() -> Result<Provider, String> {
     let labels: Vec<String> = Provider::ALL
         .iter()
-        .map(|provider| format!("{provider} — {}", label(*provider)))
+        .map(|provider| format!("{provider} — {}", provider.label()))
         .collect();
     let index = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select provider")
@@ -45,18 +45,4 @@ pub fn read_base_url(current: Option<&str>) -> Result<String, String> {
     }
     let value = input.interact_text().map_err(|error| error.to_string())?;
     Ok(value.trim().trim_end_matches('/').to_owned())
-}
-
-fn label(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Codex => "ChatGPT subscription via Codex CLI (codex login)",
-        Provider::ClaudeCode => "Claude Pro/Max via Claude Code CLI (claude auth login)",
-        Provider::OpenAi => "OpenAI API key",
-        Provider::Claude => "Anthropic API key",
-        Provider::Mistral => "Mistral API key",
-        Provider::Ollama => "Ollama (local, no API key)",
-        Provider::LmStudio => "LM Studio (local, no API key)",
-        Provider::Compat(Compat::Custom) => "Any OpenAI-compatible URL + key",
-        Provider::Compat(preset) => preset.label(),
-    }
 }

@@ -122,6 +122,19 @@ impl Provider {
     pub const fn is_local(self) -> bool {
         matches!(self, Self::Ollama | Self::LmStudio)
     }
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Codex => "ChatGPT subscription via Codex CLI (codex login)",
+            Self::ClaudeCode => "Claude Pro/Max via Claude Code CLI (claude auth login)",
+            Self::OpenAi => "OpenAI API key",
+            Self::Claude => "Anthropic API key",
+            Self::Mistral => "Mistral API key",
+            Self::Ollama => "Ollama (local, no API key)",
+            Self::LmStudio => "LM Studio (local, no API key)",
+            Self::Compat(preset) => preset.label(),
+        }
+    }
 }
 
 impl Display for Provider {
