@@ -79,7 +79,8 @@ tar xzf openterm.tar.gz &amp;&amp; cd openterm
 ./install.sh   # links ai-* into ~/.local/bin</code></pre></div></div>
       <div class="step reveal"><span>2</span><div><h3>Connect a model</h3><pre><code>ai-connect                     # arrow-key wizard
 printf %s "$GROQ_API_KEY" | ai-connect groq --model llama-3.3-70b-versatile --key-stdin
-ai-connect claude-code         # uses your Claude Pro/Max login</code></pre></div></div>
+ai-connect claude-code         # uses your Claude Pro/Max login
+ai-models use                  # choose your model with arrow keys</code></pre></div></div>
       <div class="step reveal"><span>3</span><div><h3>Ask, with context</h3><pre><code>ai-ask "why does cargo test take 40s?"
 ai-test cargo test             # compressed, with a res_… reference
 ai-explain --last              # explain the last result</code></pre></div></div>

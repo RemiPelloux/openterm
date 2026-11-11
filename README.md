@@ -82,10 +82,16 @@ ai-connect --status --json
 
 ```sh
 ai-models                     # cached models for connected providers, * = selected
+ai-models use                 # pick provider + model with arrow keys
+ai-models use openai gpt-6.1-sol      # or set it directly
+ai-models use claude-code opus        # subscriptions too: codex / claude-code take a model
 ai-models --refresh           # re-discover from every connected provider at once
-ai-models groq --refresh      # just one
 ai-models --json              # machine-readable, used by the macOS settings pane
 ```
+
+`ai-models use` saves the model and makes that provider the default for
+`ai-ask`, `ai-explain`, and `ai-chat`. Use `--model` on a single `ai-ask` to
+override it once.
 
 Lists are cached for 24 hours. When `ai-ask` notices that a list is stale, it
 refreshes it in a detached background process, so the next picker is current

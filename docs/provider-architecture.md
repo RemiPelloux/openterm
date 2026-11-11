@@ -26,6 +26,10 @@ caches them for 24 hours in the data directory. `--refresh` re-fetches all
 connected providers concurrently, and `ai-ask` / `ai-explain` start a detached
 background refresh when the cache for their provider is stale. `ai-models --json`
 is the contract the macOS provider pane reads. No model id is hard-coded.
+`ai-models use [PROVIDER [MODEL]]` chooses the stored model and default
+provider, with an arrow-key picker when arguments are omitted; the CLI
+providers accept a model too (`claude-code` offers its `opus`/`sonnet`/`haiku`
+aliases, `codex` reuses the cached OpenAI list).
 
 ## OpenAgents findings
 
