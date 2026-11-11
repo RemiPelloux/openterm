@@ -2,7 +2,6 @@
 set -eu
 
 . "$(dirname "$0")/native-common.sh"
-prepare_native_sources
 
 app="$root/dist/OpenTerm.app"
 plist="$app/Contents/Info.plist"
@@ -32,6 +31,7 @@ resolve_terminal_base() {
     echo "$base"
     return
   fi
+  prepare_native_sources >&2
   "$root/scripts/build-terminal-macos.sh"
 }
 
@@ -77,12 +77,18 @@ xcrun swiftc -O -parse-as-library -module-cache-path "$cache/swift-modules" \
 xcrun swiftc -O -module-cache-path "$cache/swift-modules" -framework AppKit \
   "$root/native/macos/Splash.swift" -o "$bundle/openterm-splash"
 
+# Prefer the pinned RTK on PATH; otherwise reuse the RTK an earlier OpenTerm
+# package already verified and bundled (it is re-signed, so its hash differs).
 rtk=$(command -v rtk || true)
-if [ -z "$rtk" ] || [ "$(rtk --version)" != "rtk $RTK_VERSION" ]; then
+base_rtk="$base/Contents/Resources/openterm/bin/rtk"
+if [ -n "$rtk" ] && [ "$("$rtk" --version)" = "rtk $RTK_VERSION" ]; then
+  verify "$RTK_SHA256" "$rtk"
+elif [ -x "$base_rtk" ] && [ "$("$base_rtk" --version)" = "rtk $RTK_VERSION" ]; then
+  rtk=$base_rtk
+else
   echo "error: RTK $RTK_VERSION is required to package OpenTerm" >&2
   exit 1
 fi
-verify "$RTK_SHA256" "$rtk"
 cp "$rtk" "$bin/rtk"
 
 cp "$root/native/macos/config.ghostty" "$bundle/default-config.ghostty"
