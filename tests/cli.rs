@@ -296,3 +296,51 @@ fn test_root() -> PathBuf {
     getrandom::fill(&mut bytes).expect("random test suffix");
     std::env::temp_dir().join(format!("openterm-cli-test-{}", hex::encode(bytes)))
 }
+
+#[test]
+fn ai_models_use_sets_model_and_default_provider() {
+    let base = test_root();
+    std::fs::create_dir_all(&base).expect("temp dir");
+    let config = r#"{"default_provider":"codex","groq":{"api_key":"sk-hidden","model":"old"}}"#;
+    std::fs::write(base.join("providers.json"), config).expect("config");
+    let output = openterm_as("ai-models")
+        .args(["use", "groq", "llama-new"])
+        .env("OPENTERM_CONFIG_DIR", &base)
+        .env("OPENTERM_DATA_DIR", &base)
+        .env("OPENTERM_KEYCHAIN", "off")
+        .output()
+        .expect("run ai-models use");
+    let saved = std::fs::read_to_string(base.join("providers.json")).expect("saved");
+    let _ = std::fs::remove_dir_all(&base);
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout).trim(),
+        "Using groq · llama-new"
+    );
+    let json: serde_json::Value = serde_json::from_str(&saved).expect("json");
+    assert_eq!(json["default_provider"], "groq");
+    assert_eq!(json["groq"]["model"], "llama-new");
+}
+
+#[test]
+fn ai_models_use_rejects_unconnected_provider() {
+    let base = test_root();
+    std::fs::create_dir_all(&base).expect("temp dir");
+    let output = openterm_as("ai-models")
+        .args(["use", "mistral", "m"])
+        .env("OPENTERM_CONFIG_DIR", &base)
+        .env("OPENTERM_DATA_DIR", &base)
+        .env("OPENTERM_KEYCHAIN", "off")
+        .env_remove("MISTRAL_API_KEY")
+        .output()
+        .expect("run ai-models use");
+    let _ = std::fs::remove_dir_all(&base);
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("ai-connect mistral"));
+}

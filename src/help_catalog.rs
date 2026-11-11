@@ -33,7 +33,7 @@ const AGENT: &[Entry] = &[
     Entry {
         name: "ai-models",
         summary: "List and refresh each provider's discovered models",
-        usage: "ai-models [PROVIDER] [--refresh] [--json] [--quiet]",
+        usage: "ai-models [PROVIDER] [--refresh] [--json] | ai-models use [PROVIDER [MODEL]]",
     },
     Entry {
         name: "ai-explain",

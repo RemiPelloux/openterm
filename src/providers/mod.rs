@@ -7,6 +7,7 @@ mod codex;
 pub mod compat;
 pub mod config;
 mod endpoint;
+mod labels;
 mod local;
 mod openai;
 mod openai_stream;
@@ -156,34 +157,6 @@ impl Provider {
             "local"
         } else {
             "api"
-        }
-    }
-
-    /// Short display name for lists and sidebars; `label` adds setup context.
-    pub const fn short_label(self) -> &'static str {
-        match self {
-            Self::Codex => "ChatGPT (Codex CLI)",
-            Self::ClaudeCode => "Claude (Claude Code)",
-            Self::OpenAi => "OpenAI",
-            Self::Claude => "Anthropic",
-            Self::Mistral => "Mistral",
-            Self::Ollama => "Ollama",
-            Self::LmStudio => "LM Studio",
-            Self::Compat(Compat::Custom) => "Custom URL",
-            Self::Compat(preset) => preset.label(),
-        }
-    }
-
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Codex => "ChatGPT subscription via Codex CLI (codex login)",
-            Self::ClaudeCode => "Claude Pro/Max via Claude Code CLI (claude auth login)",
-            Self::OpenAi => "OpenAI API key",
-            Self::Claude => "Anthropic API key",
-            Self::Mistral => "Mistral API key",
-            Self::Ollama => "Ollama (local, no API key)",
-            Self::LmStudio => "LM Studio (local, no API key)",
-            Self::Compat(preset) => preset.label(),
         }
     }
 }

@@ -80,6 +80,7 @@ pub fn render_table(report: &Report, only: Option<Provider>, now_ms: u64) -> Str
     if out.is_empty() {
         return "No connected providers. Run ai-connect first.\n".to_owned();
     }
+    out.push_str("\nChoose a model: ai-models use [PROVIDER [MODEL]]\n");
     out
 }
 
@@ -102,7 +103,13 @@ fn heading(item: &ProviderReport, now_ms: u64) -> String {
 
 fn model_lines(item: &ProviderReport) -> String {
     if item.kind == "cli" {
-        return "  the CLI chooses its own model\n".to_owned();
+        return match &item.model {
+            Some(model) => format!("  * {model}\n"),
+            None => format!(
+                "  CLI default model — pick one with: ai-models use {}\n",
+                item.id
+            ),
+        };
     }
     if item.models.is_empty() {
         return format!("  no cached models — run ai-models {} --refresh\n", item.id);

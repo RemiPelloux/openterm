@@ -2,6 +2,7 @@
 
 mod auto;
 pub mod cache;
+mod choose;
 pub mod discover;
 mod refresh;
 mod report;
@@ -13,9 +14,14 @@ use crate::providers::config::{self, ProviderSettings};
 use std::ffi::OsString;
 
 const HELP: &str = "Usage: ai-models [PROVIDER] [--refresh] [--json] [--quiet]
+       ai-models use [PROVIDER [MODEL]]
 
 List the models each connected provider offers, cached for 24 hours.
 The stored model is marked with '*'.
+
+  use         Choose the model (and default provider) with arrow keys,
+              or directly: ai-models use openai gpt-6.1-sol
+              Works for codex and claude-code too (e.g. ai-models use claude-code opus)
 
   PROVIDER    Only show (and refresh) this provider
   --refresh   Re-fetch from each provider's model discovery endpoint
@@ -34,6 +40,14 @@ struct Options {
 }
 
 pub fn run(args: impl IntoIterator<Item = OsString>) -> i32 {
+    let args: Vec<OsString> = args.into_iter().collect();
+    if args.first().is_some_and(|first| first == "use") {
+        let rest: Vec<String> = args[1..]
+            .iter()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        return choose::run(&rest);
+    }
     let options = match parse(args) {
         Ok(Some(options)) => options,
         Ok(None) => return print_help(),
