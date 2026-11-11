@@ -28,7 +28,7 @@ struct ProviderDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                if let login = provider.loginCommand { LoginHint(command: login) }
+                if let login = provider.loginCommand, !provider.connected { LoginHint(command: login) }
                 modelSection
                 if showsBaseURL { baseURLField }
                 if provider.kind == .api { keyField }
@@ -41,7 +41,7 @@ struct ProviderDetail: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(provider.label).font(.title2.bold())
+            Text(provider.title).font(.title2.bold())
             Text(provider.kind.sectionTitle).font(.caption).foregroundStyle(.secondary)
             if provider.isDefault { DefaultBadge() }
             Spacer()
@@ -56,9 +56,10 @@ struct ProviderDetail: View {
             HStack {
                 Text("Model").font(.headline)
                 Spacer()
-                refreshButton
+                if provider.kind != .cli { refreshButton }
             }
-            TextField("Model id", text: $model).textFieldStyle(.roundedBorder)
+            TextField(provider.kind == .cli ? "CLI default (or an alias like sonnet)" : "Model id",
+                      text: $model).textFieldStyle(.roundedBorder)
             if !provider.models.isEmpty { modelPicker }
             Text(catalogCaption).font(.caption).foregroundStyle(.secondary)
         }
@@ -139,6 +140,9 @@ struct ProviderDetail: View {
     }
 
     private var catalogCaption: String {
+        if provider.kind == .cli {
+            return "Optional. The CLI picks its own default model when this is empty."
+        }
         guard let fetched = provider.fetchedAt else {
             return provider.models.isEmpty ? "No model list yet — try Refresh models." : ""
         }

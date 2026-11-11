@@ -15,6 +15,7 @@ enum ProviderKind: String, Decodable, CaseIterable {
 /// One provider entry of `ai-models --json`.
 struct ProviderInfo: Decodable, Identifiable, Equatable {
     let id: String
+    let name: String?
     let label: String
     let kind: ProviderKind
     let connected: Bool
@@ -26,9 +27,12 @@ struct ProviderInfo: Decodable, Identifiable, Equatable {
     let fetchedAtMs: Int64?
 
     enum CodingKeys: String, CodingKey {
-        case id, label, kind, connected, model, baseUrl, needsBaseUrl, models, fetchedAtMs
+        case id, name, label, kind, connected, model, baseUrl, needsBaseUrl, models, fetchedAtMs
         case isDefault = "default"
     }
+
+    /// Short sidebar title; older CLIs without `name` fall back to `label`.
+    var title: String { name ?? label }
 
     /// Shell command that signs a subscription CLI in; OpenTerm never touches those tokens.
     var loginCommand: String? {

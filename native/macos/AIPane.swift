@@ -107,7 +107,7 @@ struct ProviderRow: View {
                 .fill(provider.connected ? Color.green : Color.secondary.opacity(0.4))
                 .frame(width: Self.dotSize, height: Self.dotSize)
                 .help(provider.connected ? "Connected" : "Not connected")
-            Text(provider.label)
+            Text(provider.title)
             Spacer()
             if provider.isDefault { DefaultBadge() }
         }

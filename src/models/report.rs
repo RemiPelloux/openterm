@@ -20,6 +20,7 @@ pub struct Report {
 #[derive(Debug, Serialize)]
 pub struct ProviderReport {
     pub id: String,
+    pub name: &'static str,
     pub label: &'static str,
     pub kind: &'static str,
     pub connected: bool,
@@ -55,6 +56,7 @@ fn entry(
     let cached = cache.for_endpoint(provider, &base_url);
     ProviderReport {
         id: provider.to_string(),
+        name: provider.short_label(),
         label: provider.label(),
         kind: provider.kind(),
         connected,
@@ -142,8 +144,9 @@ mod tests {
     const GROQ: Provider = Provider::Compat(Compat::Groq);
     const FETCHED_AT: u64 = 1_731_300_000_000;
     const GROQ_INDEX: usize = 8;
-    const CONTRACT_KEYS: [&str; 10] = [
+    const CONTRACT_KEYS: [&str; 11] = [
         "id",
+        "name",
         "label",
         "kind",
         "connected",
@@ -155,7 +158,7 @@ mod tests {
         "fetched_at_ms",
     ];
 
-    fn sorted(keys: [&str; 10]) -> Vec<&str> {
+    fn sorted(keys: [&str; 11]) -> Vec<&str> {
         let mut keys = keys.to_vec();
         keys.sort_unstable();
         keys
