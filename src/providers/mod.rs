@@ -1,3 +1,4 @@
+mod anthropic_events;
 mod ask_prompt;
 mod chat;
 mod claude;
@@ -9,6 +10,7 @@ mod endpoint;
 mod local;
 mod openai;
 mod openai_stream;
+mod sse;
 
 pub use claude_code::session_ready as claude_code_ready;
 pub use compat::Compat;
@@ -93,14 +95,21 @@ impl Provider {
         request: &AskRequest,
         on_delta: &mut dyn FnMut(&str),
     ) -> Result<String, String> {
-        if matches!(self, Self::OpenAi) {
-            return openai_stream::ask_stream(request, on_delta);
+        match self {
+            Self::OpenAi => openai_stream::ask_stream(request, on_delta),
+            Self::Claude => claude::ask_stream(request, on_delta),
+            Self::ClaudeCode => claude_code::ask_stream(request, on_delta),
+            Self::Mistral | Self::Ollama | Self::LmStudio | Self::Compat(_) => {
+                chat::ask_stream(request, on_delta)
+            }
+            Self::Codex => {
+                let answer = codex::ask(request)?;
+                if !answer.is_empty() {
+                    on_delta(&answer);
+                }
+                Ok(answer)
+            }
         }
-        let answer = self.ask(request)?;
-        if !answer.is_empty() {
-            on_delta(&answer);
-        }
-        Ok(answer)
     }
 
     /// Delegated CLIs pick their own default model; everything else needs one.
